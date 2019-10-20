@@ -18,7 +18,6 @@ module.exports = function(event, callback) {
       id: uuid(),
       token: uuid(),
       ...event.payload.Item,
-      createdAt: timestamp,
       updatedAt: timestamp
     },
     ConditionExpression: 'attribute_not_exists(email)'
