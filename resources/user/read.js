@@ -5,6 +5,7 @@ var {
   InternalServerError,
   ValidationErrorInvalidCredentials
 } = require('../../constants/validationResponses');
+var { isEmpty } = require('../../utils');
 
 module.exports = function(event, callback) {
   console.log('enters read');
@@ -19,19 +20,16 @@ module.exports = function(event, callback) {
 
   console.log('params\n', params);
 
-  return dynamoDb.get(params, (error, data) => {
+  return dynamoDb.get(params, function(error, data) {
     if (error) {
-      console.log('before error');
       console.error(error);
-      console.log('after error');
-      // if (Usuario no existe) {
-      //   return callback(null, ValidationErrorInvalidCredentials);
-      // }
       return callback(null, InternalServerError);
     }
-
     console.log(data);
-    delete data.Item.password;
+
+    if (isEmpty(data) || data.Item.password !== event.payload.Item.password) {
+      return callback(null, ValidationErrorInvalidCredentials);
+    }
 
     var response = {
       statusCode: 200,
