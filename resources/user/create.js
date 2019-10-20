@@ -30,7 +30,9 @@ module.exports = function(event, callback) {
     return callback(null, ValidationErrorPasswordMismatch);
   }
 
-  dynamoDb.put(params, error => {
+  delete params.Item.passwordRepeat;
+
+  return dynamoDb.put(params, error => {
     if (error) {
       console.error(error);
       if (error.code === 'ConditionalCheckFailedException') {
@@ -38,6 +40,8 @@ module.exports = function(event, callback) {
       }
       return callback(null, InternalServerError);
     }
+
+    delete params.Item.password;
 
     var response = {
       statusCode: 200,
