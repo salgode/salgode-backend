@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "predeploy": "zip -r SalgodeCore.zip index.js resources utils",
+    "predeploy": "zip -r SalgodeCore.zip index.js resources utils constants",
     "deploy": "aws lambda update-function-code --function-name SalgodeCore --zip-file fileb://SalgodeCore.zip --region us-east-1"
   },
   "private": true,

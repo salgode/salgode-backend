@@ -1,6 +1,15 @@
+var AWS = require('aws-sdk');
+var dynamoDb = new AWS.DynamoDB.DocumentClient();
+
 var { uuid } = require('../../utils');
+var {
+  InternalServerError,
+  ValidationErrorEmailAlreadyInUse,
+  ValidationErrorPasswordMismatch
+} = require('../../constants/validations');
 
 module.exports = function(event, callback) {
+  console.log('enters create');
   var timestamp = new Date().getTime();
 
   var params = {
@@ -14,11 +23,21 @@ module.exports = function(event, callback) {
     ConditionExpression: 'attribute_not_exists(email)'
   };
 
+  console.log('params\n', params);
+
+  if (params.password !== params.passwordRepeat) {
+    return callback(null, ValidationErrorPasswordMismatch);
+  }
+
+  delete params.Item.passwordRepeat;
+
   dynamoDb.put(params, error => {
     if (error) {
       console.error(error);
-      callback(null, { statusCode: 501 });
-      return;
+      if (error.code === 'ConditionalCheckFailedException') {
+        return callback(null, ValidationErrorEmailAlreadyInUse);
+      }
+      return callback(null, InternalServerError);
     }
 
     var response = {
