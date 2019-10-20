@@ -16,6 +16,7 @@ module.exports = function(event, callback) {
     TableName: event.TableName,
     Item: {
       id: uuid(),
+      token: uuid(),
       ...event.payload.Item,
       createdAt: timestamp,
       updatedAt: timestamp
