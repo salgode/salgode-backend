@@ -1,0 +1,16 @@
+{
+  "header": "Changelog",
+  "types": [
+    {"type": "feat", "section": "Features"},
+    {"type": "fix", "section": "Bug Fixes"},
+    {"type": "test", "section": "Tests"},
+    {"type": "chore", "section": "Chore"},
+    {"type": "style", "section": "Style Improvements"},
+    {"type": "refactor", "section": "Refactor"},
+    {"type": "docs", "section": "Docs"},
+    {"type": "prerelease", "hidden": true},
+    {"type": "release", "hidden": true},
+    {"type": "perf", "hidden": true}
+  ],
+  "releaseCommitMessageFormat": "release: {{currentTag}}"
+}
