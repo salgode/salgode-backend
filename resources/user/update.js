@@ -1,70 +1,63 @@
-var { uuid } = require('../../utils');
+var AWS = require('aws-sdk');
+var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-function parseOnRuntime(map) {
-  let obj = ' set ';
-  let parsedExpressionAttributeValues = {};
-  let parsedExpressionAttributeNames = {};
-  for (let k of Object.keys(map)) {
-    if (k === 'car') {
-      for (let j of Object.keys(map.car)) {
-        obj += 'car.' + j + '=:' + j[0] + ', ';
-        parsedExpressionAttributeValues[':' + j[0]] = map.car[j];
-      }
-    } else if (k === 'phone') {
-      obj += k + '=:' + k[0] + k[1] + ', ';
-      parsedExpressionAttributeValues[':' + k[0] + k[1]] = map[k];
-    } else if (k === 'name') {
-      obj += '#n=:' + k[0] + ', ';
-      parsedExpressionAttributeValues[':' + k[0]] = map[k];
-      parsedExpressionAttributeNames['#n'] = 'name';
-    } else if (k === 'model') {
-      obj += '#m=:' + k[0] + ', ';
-      parsedExpressionAttributeValues[':' + k] = map.car[k];
-      parsedExpressionAttributeNames['#m'] = 'model';
-    } else {
-      obj += k + '=:' + k[0] + ', ';
-      parsedExpressionAttributeValues[':' + k[0]] = map[k];
-    }
-  }
-  return [
-    obj.slice(1, -2),
-    parsedExpressionAttributeValues,
-    parsedExpressionAttributeNames
-  ];
-}
+var {
+  Unauthorized,
+  NotFound,
+  InternalServerError
+} = require('../../constants/validationResponses');
+var { isEmpty, uuid } = require('../../utils');
 
 module.exports = function(event, callback) {
+  console.log('enters update');
   var timestamp = new Date().getTime();
-  const parsed = parseOnRuntime(event.payload.Item);
-  var params = {
+
+  var getParams = {
     TableName: event.TableName,
-    Key: event.Key,
-    Item: {
-      id: uuid(),
-      ...event.payload.Item,
-      updatedAt: timestamp
-    },
-    UpdateExpression: parsed[0],
-    ExpressionAttributeValues: {
-      ...parsed[1]
+    Key: {
+      email: event.payload.Key.email
     }
   };
-  Object.keys(parsed[2]).length === 0
-    ? null
-    : (params.ExpressionAttributeNames = {
-        ...parsed[2]
-      });
-  console.log(params);
-  dynamoDb.update(params, error => {
+
+  return dynamoDb.get(getParams, (error, getData) => {
     if (error) {
       console.error(error);
-      callback(null, { statusCode: 501 });
-      return;
+      return callback(null, InternalServerError);
+    }
+    console.log('getData', getData);
+
+    if (isEmpty(getData)) {
+      return callback(null, NotFound);
     }
 
-    var response = {
-      statusCode: 200
+    if (
+      event.payload.Key.token !== getData.Item.token ||
+      event.payload.Key.id !== getData.Item.id ||
+      event.payload.Key.email !== getData.Item.email
+    ) {
+      return callback(null, Unauthorized);
+    }
+
+    var putParams = {
+      TableName: event.TableName,
+      Key: event.payload.Key,
+      Item: {
+        ...getData.Item,
+        ...event.payload.Item,
+        updatedAt: timestamp
+      }
     };
-    return callback(null, response);
+
+    return dynamoDb.put(putParams, error => {
+      if (error) {
+        console.error(error);
+        return callback(null, InternalServerError);
+      }
+
+      var response = {
+        statusCode: 200
+      };
+      return callback(null, response);
+    });
   });
 };

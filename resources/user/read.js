@@ -20,7 +20,7 @@ module.exports = function(event, callback) {
 
   console.log('params\n', params);
 
-  return dynamoDb.get(params, function(error, data) {
+  return dynamoDb.get(params, (error, data) => {
     if (error) {
       console.error(error);
       return callback(null, InternalServerError);
