@@ -42,7 +42,6 @@ module.exports = function(event, callback) {
     Item: {
       id: uuid(),
       ...event.payload.Item,
-      createdAt: timestamp,
       updatedAt: timestamp
     },
     UpdateExpression: parsed[0],
@@ -64,8 +63,7 @@ module.exports = function(event, callback) {
     }
 
     var response = {
-      statusCode: 200,
-      body: params.Item
+      statusCode: 200
     };
     return callback(null, response);
   });
