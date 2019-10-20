@@ -25,11 +25,9 @@ module.exports = function(event, callback) {
 
   console.log('params\n', params);
 
-  if (params.password !== params.passwordRepeat) {
+  if (params.Item.password !== params.Item.passwordRepeat) {
     return callback(null, ValidationErrorPasswordMismatch);
   }
-
-  delete params.Item.passwordRepeat;
 
   dynamoDb.put(params, error => {
     if (error) {
