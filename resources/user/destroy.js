@@ -5,7 +5,7 @@ var { uuid } = require('../../utils');
 var { InternalServerError } = require('../../constants/validationResponses');
 
 module.exports = function(event, callback) {
-  console.log('enters delete');
+  console.log('enters delete mode');
   var params = {
     TableName: event.TableName,
     Key: event.Key
