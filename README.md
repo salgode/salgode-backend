@@ -64,6 +64,7 @@ Se aprecia el aporte al backend de:
 - [Domingo Ramírez](https://github.com/chuma9615)
 - [Maurice Poirrier](https://github.com/mauricepoirrier)
 - [Felipe Navarro](https://github.com/fcnavarro)
+- [Bernardo Subercaseaux](https://github.com/bsubercaseaux)
 
 <!-- BADGES -->
 
