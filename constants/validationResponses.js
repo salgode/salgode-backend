@@ -10,5 +10,9 @@ module.exports = {
   ValidationErrorPasswordMismatch: {
     statusCode: 400,
     message: 'Las contraseñas no coinciden'
+  },
+  ValidationErrorInvalidCredentials: {
+    statusCode: 401,
+    message: 'Credenciales inválidas'
   }
 };
