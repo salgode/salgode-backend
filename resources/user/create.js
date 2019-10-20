@@ -18,7 +18,6 @@ module.exports = function(event, callback) {
       id: uuid(),
       token: uuid(),
       ...event.payload.Item,
-      createdAt: timestamp,
       updatedAt: timestamp
     },
     ConditionExpression: 'attribute_not_exists(email)'
@@ -44,8 +43,7 @@ module.exports = function(event, callback) {
     delete params.Item.password;
 
     var response = {
-      statusCode: 200,
-      body: params.Item
+      statusCode: 200
     };
     return callback(null, response);
   });
