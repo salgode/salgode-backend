@@ -17,6 +17,7 @@ Sigue el desarrollo en [nuestro Trello](https://trello.com/b/GCTJ1iMU/salgode).
   - [Gitflow](#gitflow)
   - [Release](#release)
 - [Motores](#motores)
+- [Agradecimientos](#agradecimientos)
 
 ## Scripts
 
@@ -52,6 +53,17 @@ Sigue el desarrollo en [nuestro Trello](https://trello.com/b/GCTJ1iMU/salgode).
 
   - node ^12.9.1
   - yarn ^1.17.3
+
+## Agradecimientos
+
+Se aprecia el aporte al backend de:
+
+- [Franco Méndez Z.](https://github.com/fnmendez)
+- [Matías Andrade](https://github.com/mandrade2)
+- [José Morales Lira](https://github.com/josemlira)
+- [Domingo Ramírez](https://github.com/chuma9615)
+- [Maurice Poirrier](https://github.com/mauricepoirrier)
+- [Felipe Navarro](https://github.com/fcnavarro)
 
 <!-- BADGES -->
 
