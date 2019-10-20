@@ -5,8 +5,8 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "predeploy": "zip -r artifact.zip *",
-    "deploy": "aws lambda update-function-code --function-name SalgodeCore --zip-file fileb://artifact.zip --region us-east-1"
+    "predeploy": "zip -r SalgodeCore.zip index.js resources utils",
+    "deploy": "aws lambda update-function-code --function-name SalgodeCore --zip-file fileb://SalgodeCore.zip --region us-east-1"
   },
   "private": true,
   "devDependencies": {
