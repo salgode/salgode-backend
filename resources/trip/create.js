@@ -15,7 +15,6 @@ module.exports = function(event, callback) {
     Item: {
       id: uuid(),
       ...event.payload.Item,
-      passphrase: genPassphrase(),
       createdAt: timestamp,
       updatedAt: timestamp,
       lastSpotIndex: -1,
