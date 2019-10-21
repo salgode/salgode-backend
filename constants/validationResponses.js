@@ -19,6 +19,15 @@ module.exports = {
     statusCode: 400,
     message: 'Las contraseñas no coinciden'
   },
+
+  ValidationErrorInvalidCredentials: {
+    statusCode: 401,
+    message: 'Credenciales inválidas'
+  },
+  ValidationErrorInvalideFile: {
+    statusCode: 415,
+    message: 'Tipo de archivo no valido'
+  },
   NotFound: {
     statusCode: 404,
     message: 'No se ha encontrado lo que buscas'
