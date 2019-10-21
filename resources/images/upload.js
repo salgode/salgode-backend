@@ -7,8 +7,6 @@ const {
 } = require('../../constants/validationResponses');
 const sha1 = require('sha1');
 
-const fs = require('fs');
-
 let getFile = function(fileMime, buffer) {
   let fileExt = fileMime.ext;
   let hash = sha1(new Buffer(new Date().toString()));
