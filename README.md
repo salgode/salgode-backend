@@ -70,6 +70,8 @@ Se aprecia el aporte al backend de:
 - [Cristian Eing](https://github.com/cristianeing)
 - [Antonio Fontaine](https://github.com/afontainec)
 - [Diego Bordeu](https://github.com/diegobordeu)
+- [Luis Fros](https://github.com/LuisFros)
+- [Benjamín Benavides](https://github.com/benjavides)
 
 <!-- BADGES -->
 
