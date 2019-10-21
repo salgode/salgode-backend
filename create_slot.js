@@ -4,7 +4,7 @@ const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
 async function createSlot(tripId, userId) {
-  let slotId = 'slo_'+uuidv4();
+  let slotId = 'slo_' + uuidv4();
   let createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
     await dynamoDB.transactWrite({
@@ -42,7 +42,7 @@ async function createSlot(tripId, userId) {
   }
 }
 
-exports.handler = async (event) => {
+exports.handler = async event => {
   let tripId = event.trip_id;
   let userId = event.user_id;
 

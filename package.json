@@ -4,7 +4,13 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "predeploy:UserCreate": "rm SalgodeUserCreate.zip && zip SalgodeUserCreate.zip SalgodeUserCreate.js",
+    "predeploy:UserRead": "rm SalgodeUserRead.zip && zip SalgodeUserRead.zip SalgodeUserRead.js",
+    "predeploy:UserUpdate": "rm SalgodeUserUpdate.zip && zip SalgodeUserUpdate.zip SalgodeUserUpdate.js",
+    "deploy:UserCreate": "aws lambda update-function-code --function-name SalgodeUserCreate --zip-file fileb://SalgodeUserCreate.zip --region us-east-1",
+    "deploy:UserRead": "aws lambda update-function-code --function-name SalgodeUserRead --zip-file fileb://SalgodeUserRead.zip --region us-east-1",
+    "deploy:UserUpdate": "aws lambda update-function-code --function-name SalgodeUserUpdate --zip-file fileb://SalgodeUserUpdate.zip --region us-east-1"
   },
   "private": true,
   "devDependencies": {
