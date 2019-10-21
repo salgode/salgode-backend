@@ -9,10 +9,12 @@
     "predeploy:UserRead": "rm SalgodeUserRead.zip && zip SalgodeUserRead.zip SalgodeUserRead.js",
     "predeploy:UserUpdate": "rm SalgodeUserUpdate.zip && zip SalgodeUserUpdate.zip SalgodeUserUpdate.js",
     "predeploy:SalgodeSpots": "rm SalgodeSpots.zip && zip SalgodeSpots.zip SalgodeSpots.js",
+    "predeploy:get_trips": "rm get_trips.zip && zip get_trips.zip get_trips.js",
     "deploy:UserCreate": "aws lambda update-function-code --function-name SalgodeUserCreate --zip-file fileb://SalgodeUserCreate.zip --region us-east-1",
     "deploy:UserRead": "aws lambda update-function-code --function-name SalgodeUserRead --zip-file fileb://SalgodeUserRead.zip --region us-east-1",
     "deploy:UserUpdate": "aws lambda update-function-code --function-name SalgodeUserUpdate --zip-file fileb://SalgodeUserUpdate.zip --region us-east-1",
-    "deploy:SalgodeSpots": "aws lambda update-function-code --function-name SalgodeSpots --zip-file fileb://SalgodeSpots.zip --region us-east-1"
+    "deploy:SalgodeSpots": "aws lambda update-function-code --function-name SalgodeSpots --zip-file fileb://SalgodeSpots.zip --region us-east-1",
+    "deploy:get_trips": "aws lambda update-function-code --function-name SalgoDe_GetTrips --zip-file fileb://get_trips.zip --region us-east-1"
   },
   "private": true,
   "devDependencies": {
