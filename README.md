@@ -61,6 +61,7 @@ Se aprecia el aporte al backend de:
 - [Franco Méndez Z.](https://github.com/fnmendez)
 - [Matías Andrade](https://github.com/mandrade2)
 - [José Morales Lira](https://github.com/josemlira)
+- [Bruno Calderon](https://github.com/brunocalderon)
 - [Domingo Ramírez](https://github.com/chuma9615)
 - [Maurice Poirrier](https://github.com/mauricepoirrier)
 - [Felipe Navarro](https://github.com/fcnavarro)

@@ -1,5 +1,7 @@
-var AWS = require('aws-sdk');
-var dynamoDb = new AWS.DynamoDB.DocumentClient();
+const aws = require('aws-sdk');
+const dynamoDb = new aws.DynamoDB.DocumentClient();
+const uuidv4 = require('uuid/v4');
+const moment = require('moment');
 
 module.exports.handler = function(event, context, callback) {
   if (
@@ -13,13 +15,13 @@ module.exports.handler = function(event, context, callback) {
   }
 
   console.log('enters create');
-  var timestamp = new Date().getTime();
+  let timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
 
-  var params = {
+  let params = {
     TableName: event.TableName,
     Item: {
-      id: uuid(),
-      token: uuid(),
+      id: 'usr_' + uuidv4(),
+      token: uuidv4(),
       ...event.payload.Item,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -46,7 +48,7 @@ module.exports.handler = function(event, context, callback) {
 
     delete params.Item.password;
 
-    var response = {
+    let response = {
       statusCode: 200,
       body: params.Item
     };
@@ -54,31 +56,19 @@ module.exports.handler = function(event, context, callback) {
   });
 };
 
-function uuid() {
-  var dt = new Date().getTime();
-  var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(
-    c
-  ) {
-    var r = (dt + Math.random() * 16) % 16 | 0;
-    dt = Math.floor(dt / 16);
-    return (c == 'x' ? r : (r & 0x3) | 0x8).toString(16);
-  });
-  return uuid;
-}
-
-var BadRequest = {
+let BadRequest = {
   statusCode: 400,
   message: 'Tu solicitud tiene errores'
 };
-var ValidationErrorEmailAlreadyInUse = {
+let ValidationErrorEmailAlreadyInUse = {
   statusCode: 400,
   message: 'El email ya está en uso'
 };
-var ValidationErrorPasswordMismatch = {
+let ValidationErrorPasswordMismatch = {
   statusCode: 400,
   message: 'Las contraseñas no coinciden'
 };
-var InternalServerError = {
+let InternalServerError = {
   statusCode: 503,
   message: 'Algo inesperado acaba de pasar... gracias por intentar más tarde'
 };
