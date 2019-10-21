@@ -3,11 +3,12 @@ var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 module.exports.handler = function(event, context, callback) {
   var timestamp = new Date().getTime();
-
+  var tripId = event.pathParameters.trip;
+  console.log(tripId);
   var getParams = {
     TableName: 'SalgoDe_Trips',
     Key: {
-      trip_id: 'tri_76330460-bee7-4e4c-903c-eb6b0779a7b7'
+      trip_id: tripId
     }
   };
 
@@ -16,20 +17,11 @@ module.exports.handler = function(event, context, callback) {
       console.error(error);
       return callback(null, InternalServerError);
     }
-    console.log('getData', getData);
 
     if (isEmpty(getData)) {
       return callback(null, NotFound);
     }
 
-    // if (
-    //   event.payload.Key.token !== getData.Item.token ||
-    //   event.payload.Key.id !== getData.Item.id ||
-    //   event.payload.Key.email !== getData.Item.email
-    // ) {
-    //   return callback(null, Unauthorized);
-    // }
-    
     getData.Item.trip_status = 'in_progress';
     getData.Item.next_stop = 0;
     getData.Item.updatedAt = timestamp;
@@ -37,7 +29,7 @@ module.exports.handler = function(event, context, callback) {
     var putParams = {
       TableName: 'SalgoDe_Trips',
       Key: {
-      trip_id: 'tri_76330460-bee7-4e4c-903c-eb6b0779a7b7'
+        trip_id: tripId
       },
       Item: getData.Item
     };
@@ -59,6 +51,11 @@ module.exports.handler = function(event, context, callback) {
 function isEmpty(obj) {
   return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
+
+var MissingIdOnRequestError = {
+  statusCode: 400,
+  message: 'Id de trip no especificada en request'
+};
 
 var ValidationErrorPasswordMismatch = {
   statusCode: 400,

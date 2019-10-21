@@ -3,11 +3,10 @@ var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 module.exports.handler = function(event, context, callback) {
   var timestamp = new Date().getTime();
-  
-  var tripId = event.tripId;
-  
-  if(!tripId) return callback(null, NotFound);
 
+  // var tripId = event.tripId;
+  var tripId = event.pathParameters.trip;
+  if (!tripId) return callback(null, MissingIdOnRequestError);
 
   var getParams = {
     TableName: 'SalgoDe_Trips',
@@ -24,30 +23,21 @@ module.exports.handler = function(event, context, callback) {
     if (isEmpty(getData)) {
       return callback(null, NotFound);
     }
-
-    // if (
-    //   event.payload.Key.token !== getData.Item.token ||
-    //   event.payload.Key.id !== getData.Item.id ||
-    //   event.payload.Key.email !== getData.Item.email
-    // ) {
-    //   return callback(null, Unauthorized);
-    // }
-    if(getData.Item.trip_status !== 'in_progress') {
-    return callback(null, TripInValidState);
+    if (getData.Item.trip_status !== 'in_progress') {
+      return callback(null, TripInValidState);
     }
     getData.Item.next_stop = getData.Item.next_stop || 0;
     getData.Item.next_stop = getData.Item.next_stop + 1;
     getData.Item.updatedAt = timestamp;
-    
-    if(getData.Item.next_stop === getData.Item.route_points.length) {
-        getData.Item.trip_status = 'finished';
+
+    if (getData.Item.next_stop === getData.Item.route_points.length) {
+      getData.Item.trip_status = 'finished';
     }
-    
-    
+
     var putParams = {
       TableName: 'SalgoDe_Trips',
       Key: {
-      trip_id: tripId
+        trip_id: tripId
       },
       Item: getData.Item
     };
@@ -70,9 +60,9 @@ function isEmpty(obj) {
   return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
-var ValidationErrorPasswordMismatch = {
+var MissingIdOnRequestError = {
   statusCode: 400,
-  message: 'Las contraseñas no coinciden'
+  message: 'Id de trip no especificada en request'
 };
 
 var TripInValidState = {
