@@ -1,10 +1,11 @@
 var AWS = require('aws-sdk');
 var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
+var { BadRequest } = require('./constants/validationResponses');
 var { handleUser } = require('./resources');
 
 exports.handler = function(event, context, callback) {
-  // console.log('EVENT: \n' + JSON.stringify(event, null, 2));
+  console.log('EVENT', event);
 
   if (
     !event.TableName ||
@@ -13,13 +14,12 @@ exports.handler = function(event, context, callback) {
     !event.payload ||
     !event.payload.Item
   ) {
-    console.log('main validation');
-    return callback(null, { statusCode: 400 });
+    return callback(null, BadRequest);
   }
 
   switch (event.resource) {
     case 'user':
-      console.log('enter user');
+      console.log('enters user');
       return handleUser(event, callback);
   }
 };
