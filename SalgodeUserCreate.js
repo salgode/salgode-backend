@@ -4,7 +4,7 @@ const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 const bcrypt = require('bcryptjs');
 
-const SALT_LENGTH = 120;
+const SALT_LENGTH = 15;
 
 module.exports.handler = function(event, context, callback) {
   if (
@@ -67,7 +67,8 @@ module.exports.handler = function(event, context, callback) {
 
   delete params.Item.passwordRepeat;
 
-  params.Item.password = bcrypt.hashSync(params.Item.password, SALT_LENGTH);
+  const Salt = bcrypt.genSaltSync(SALT_LENGTH);
+  params.Item.password = bcrypt.hashSync(params.Item.password, Salt);
 
   return dynamoDb.put(params, error => {
     if (error) {
