@@ -1,47 +1,55 @@
-var AWS = require('aws-sdk');
-var dynamoDb = new AWS.DynamoDB.DocumentClient();
-
 var { uuid } = require('../../utils');
+var AWS = require('aws-sdk');
+AWS.config.update({ region: 'us-east-1' });
+var dynamoDb = new AWS.DynamoDB.DocumentClient();
+var {
+  validateName,
+  validatePlate,
+  validateColor,
+  validateBrand
+} = require('../../utils/validations/users');
+
 var {
   InternalServerError,
+  BadRequest,
   ValidationErrorEmailAlreadyInUse,
   ValidationErrorPasswordMismatch
 } = require('../../constants/validationResponses');
 
 module.exports = function(event, callback) {
-  console.log('enters create');
   var timestamp = new Date().getTime();
 
   var params = {
     TableName: event.TableName,
     Item: {
       id: uuid(),
-      token: uuid(),
       ...event.payload.Item,
       createdAt: timestamp,
       updatedAt: timestamp
-    },
-    ConditionExpression: 'attribute_not_exists(email)'
+    }
   };
-
-  console.log('params\n', params);
-
-  if (params.Item.password !== params.Item.passwordRepeat) {
-    return callback(null, ValidationErrorPasswordMismatch);
+  console.log(params.Item.car);
+  if (
+    !validateName(params.Item.name) ||
+    (params.Item.car &&
+      !params.Item.car.plate &&
+      !validatePlate(params.Item.car.plate)) ||
+    (params.Item.car &&
+      !params.Item.car.color &&
+      !validateColor(params.Item.car.color)) ||
+    (params.Item.car &&
+      !params.Item.car.brand &&
+      !validateBrand(params.Item.car.brand))
+  ) {
+    return callback(null, BadRequest);
   }
-
-  delete params.Item.passwordRepeat;
-
-  return dynamoDb.put(params, error => {
+  console.log(params);
+  dynamoDb.put(params, error => {
     if (error) {
       console.error(error);
-      if (error.code === 'ConditionalCheckFailedException') {
-        return callback(null, ValidationErrorEmailAlreadyInUse);
-      }
-      return callback(null, InternalServerError);
+      callback(null, { statusCode: 501 });
+      return;
     }
-
-    delete params.Item.password;
 
     var response = {
       statusCode: 200,
