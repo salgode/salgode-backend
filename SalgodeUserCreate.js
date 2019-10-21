@@ -17,6 +17,33 @@ module.exports.handler = function(event, context, callback) {
   console.log('enters create');
   let timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
 
+  let input = event.payload.Item;
+
+  if (
+    !input.email ||
+    !input.name ||
+    !input.lastName ||
+    !input.phone ||
+    !input.selfieLink ||
+    !input.dniFrontLink ||
+    !input.dniBackLink ||
+    !input.password ||
+    !input.passwordRepeat
+  ) {
+    return callback(null, BadRequest);
+  }
+
+  if (input.car && !isEmpty(input.car)) {
+    if (
+      !input.car.plate ||
+      !input.car.model ||
+      !input.car.color ||
+      !input.car.brand
+    ) {
+      return callback(null, BadRequest);
+    }
+  }
+
   let params = {
     TableName: event.TableName,
     Item: {
@@ -55,6 +82,19 @@ module.exports.handler = function(event, context, callback) {
     return callback(null, response);
   });
 };
+
+function filterEmptyKeys(obj) {
+  var nonEmptyKeys = Object.keys(obj).filter(k => obj[k] !== '');
+  var retObj = {};
+  nonEmptyKeys.forEach(key => {
+    retObj[key] = obj[key];
+  });
+  return retObj;
+}
+
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
 
 let BadRequest = {
   statusCode: 400,
