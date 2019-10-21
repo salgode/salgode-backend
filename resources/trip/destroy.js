@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-const { InternalServerError } = require('../../constants/validationResponses');
+const { InternalServerError } = require('../../constants/errorResponses');
 
 module.exports = function(event, callback) {
   console.log('enters destroy');

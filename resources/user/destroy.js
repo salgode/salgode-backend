@@ -2,10 +2,10 @@ var AWS = require('aws-sdk');
 var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 var { uuid } = require('../../utils');
-var { InternalServerError } = require('../../constants/validationResponses');
+var { InternalServerError } = require('../../constants/errorResponses');
 
 module.exports = function(event, callback) {
-  console.log('enters delete mode');
+  console.log('enters delete');
   var params = {
     TableName: event.TableName,
     Key: event.Key

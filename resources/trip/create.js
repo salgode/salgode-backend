@@ -3,9 +3,7 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 const { uuid } = require('../../utils');
 const { genPassphrase } = require('../../utils');
-const {
-  InternalServerError,
-} = require('../../constants/validationResponses');
+const { InternalServerError } = require('../../constants/errorResponses');
 
 module.exports = function(event, callback) {
   const timestamp = new Date().getTime();
@@ -18,12 +16,11 @@ module.exports = function(event, callback) {
       createdAt: timestamp,
       updatedAt: timestamp,
       lastSpotIndex: -1,
-      requests: [],
-    },
+      requests: []
+    }
   };
 
   console.log('params\n', params);
-
 
   dynamoDb.put(params, error => {
     if (error) {

@@ -3,10 +3,11 @@ var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 var {
   Unauthorized,
+  ValidationErrorPasswordMismatch,
   NotFound,
   InternalServerError
-} = require('../../constants/validationResponses');
-var { isEmpty, uuid } = require('../../utils');
+} = require('../../constants/errorResponses');
+var { filterEmptyKeys, isEmpty, removePassword, uuid } = require('../../utils');
 
 module.exports = function(event, callback) {
   console.log('enters update');
@@ -18,6 +19,8 @@ module.exports = function(event, callback) {
       email: event.payload.Key.email
     }
   };
+
+  console.log('getParams', getParams);
 
   return dynamoDb.get(getParams, (error, getData) => {
     if (error) {
@@ -42,11 +45,25 @@ module.exports = function(event, callback) {
       TableName: event.TableName,
       Key: event.payload.Key,
       Item: {
-        ...getData.Item,
-        ...event.payload.Item,
+        ...removePassword(getData.Item),
+        ...filterEmptyKeys(event.payload.Item),
         updatedAt: timestamp
       }
     };
+
+    console.log('putParams before password check', putParams);
+
+    if (putParams.Item.password || putParams.Item.passwordRepeat) {
+      if (
+        !putParams.Item.password ||
+        !putParams.Item.passwordRepeat ||
+        putParams.Item.password !== putParams.Item.passwordRepeat
+      ) {
+        return callback(null, ValidationErrorPasswordMismatch);
+      }
+    } else {
+      putParams.Item['password'] = getData.Item.password;
+    }
 
     return dynamoDb.put(putParams, error => {
       if (error) {

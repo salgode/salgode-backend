@@ -6,7 +6,7 @@ var {
   InternalServerError,
   ValidationErrorEmailAlreadyInUse,
   ValidationErrorPasswordMismatch
-} = require('../../constants/validationResponses');
+} = require('../../constants/errorResponses');
 
 module.exports = function(event, callback) {
   console.log('enters create');

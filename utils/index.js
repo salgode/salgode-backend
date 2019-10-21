@@ -1,4 +1,6 @@
 module.exports = {
-  uuid: require('./uuid'),
-  isEmpty: require('./isEmpty')
+  filterEmptyKeys: require('./filterEmptyKeys'),
+  isEmpty: require('./isEmpty'),
+  removePassword: require('./removePassword'),
+  uuid: require('./uuid')
 };

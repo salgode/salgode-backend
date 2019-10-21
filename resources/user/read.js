@@ -4,7 +4,7 @@ var dynamoDb = new AWS.DynamoDB.DocumentClient();
 var {
   InternalServerError,
   ValidationErrorInvalidCredentials
-} = require('../../constants/validationResponses');
+} = require('../../constants/errorResponses');
 var { isEmpty } = require('../../utils');
 
 module.exports = function(event, callback) {

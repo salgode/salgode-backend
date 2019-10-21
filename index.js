@@ -1,7 +1,7 @@
 var AWS = require('aws-sdk');
 var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-var { BadRequest } = require('./constants/validationResponses');
+var { BadRequest } = require('./constants/errorResponses');
 var { handleUser } = require('./resources');
 
 exports.handler = function(event, context, callback) {
