@@ -2,6 +2,9 @@ const aws = require('aws-sdk');
 const dynamoDb = new aws.DynamoDB.DocumentClient();
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
+const bcrypt = require('bcryptjs');
+
+const SALT_LENGTH = 120;
 
 module.exports.handler = function(event, context, callback) {
   if (
@@ -63,6 +66,8 @@ module.exports.handler = function(event, context, callback) {
   }
 
   delete params.Item.passwordRepeat;
+
+  params.Item.password = bcrypt.hashSync(params.Item.password, SALT_LENGTH);
 
   return dynamoDb.put(params, error => {
     if (error) {

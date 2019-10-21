@@ -1,4 +1,5 @@
-var AWS = require('aws-sdk');
+const AWS = require('aws-sdk');
+const bcrypt = require('bcryptjs');
 var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 module.exports.handler = function(event, context, callback) {
@@ -21,7 +22,7 @@ module.exports.handler = function(event, context, callback) {
     }
     console.log(data);
 
-    if (isEmpty(data) || data.Item.password !== event.payload.Item.password) {
+    if (!isEmpty(data) && bcrypt.compareSync(event.payload.Item.password, data.Item.password)) {
       return callback(null, ValidationErrorInvalidCredentials);
     }
 
