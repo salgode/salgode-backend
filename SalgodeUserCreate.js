@@ -36,15 +36,19 @@ module.exports.handler = function(event, context, callback) {
     return callback(null, BadRequest);
   }
 
-  if (input.car && !isEmpty(input.car)) {
+  if (
+    input.car &&
+    !(input.car.plate && input.car.model && input.car.color && input.car.brand)
+  ) {
     if (
-      !input.car.plate ||
-      !input.car.model ||
-      !input.car.color ||
-      !input.car.brand
+      input.car.plate ||
+      input.car.model ||
+      input.car.color ||
+      input.car.brand
     ) {
       return callback(null, BadRequest);
     }
+    delete event.payload.Item.car;
   }
 
   let params = {
@@ -52,13 +56,15 @@ module.exports.handler = function(event, context, callback) {
     Item: {
       id: 'usr_' + uuidv4(),
       token: uuidv4(),
-      ...event.payload.Item,
+      ...filterEmptyKeys(event.payload.Item),
       createdAt: timestamp,
       updatedAt: timestamp
     },
     ConditionExpression: 'attribute_not_exists(email)'
   };
 
+  console.log('params\n', params);
+  console.log('params\n', params);
   console.log('params\n', params);
 
   if (params.Item.password !== params.Item.passwordRepeat) {
