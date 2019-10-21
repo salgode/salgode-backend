@@ -1,3 +1,4 @@
 module.exports = {
-  handleUser: require('./user')
+  handleUser: require('./user'),
+  handleTrip: require('./trip')
 };
