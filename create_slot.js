@@ -7,37 +7,38 @@ async function createSlot(tripId, userId) {
   let slotId = 'slo_' + uuidv4();
   let createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
-    await dynamoDB.transactWrite({
-      TransactItems: [
+    await dynamoDB
+      .transactWrite({
+        TransactItems: [
           {
-              ConditionCheck: {
-                  TableName: process.env.dynamodb_table_name_trips,
-                  Key: {
-                      "trip_id": tripId
-                  },
-                  ConditionExpression: "available_seats >= :available_seats",
-                  ExpressionAttributeValues: {
-                      ":available_seats": 1,
-                  }
+            ConditionCheck: {
+              TableName: process.env.dynamodb_table_name_trips,
+              Key: {
+                trip_id: tripId
+              },
+              ConditionExpression: 'available_seats >= :available_seats',
+              ExpressionAttributeValues: {
+                ':available_seats': 1
               }
+            }
           },
           {
-              Put: {
-                  TableName: process.env.dynamodb_table_name_slots,
-                  Item: {
-                      "slot_id": slotId,
-                      "trip_id": tripId,
-                      "user_id": userId,
-                      "slot_status": "requested",
-                      "created_at": createdAt
-                  }
+            Put: {
+              TableName: process.env.dynamodb_table_name_slots,
+              Item: {
+                slot_id: slotId,
+                trip_id: tripId,
+                user_id: userId,
+                slot_status: 'requested',
+                created_at: createdAt
               }
+            }
           }
-      ]
-    }).promise();
+        ]
+      })
+      .promise();
     return true;
-  }
-  catch(e) {
+  } catch (e) {
     return false;
   }
 }

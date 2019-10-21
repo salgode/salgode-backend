@@ -3,12 +3,12 @@ const { parallelScan } = require('@shelf/dynamodb-parallel-scan');
 async function getSpots() {
   let params = {
     TableName: process.env.dynamodb_table_name,
-    ProjectionExpression: "#id, #name, #address, #city",
+    ProjectionExpression: '#id, #name, #address, #city',
     ExpressionAttributeNames: {
-      "#id": "id",
-      "#name": "name",
-      "#address": "address",
-      "#city": "city"
+      '#id': 'id',
+      '#name': 'name',
+      '#address': 'address',
+      '#city': 'city'
     }
   };
   let data = await parallelScan(params, { concurrency: 1000 });
