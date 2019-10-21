@@ -24,24 +24,16 @@ module.exports = {
     statusCode: 401,
     message: 'Credenciales inválidas'
   },
-  ValidationErrorInvalideFile: {
-    statusCode: 415,
-    message: 'Tipo de archivo no valido'
-  },
   NotFound: {
     statusCode: 404,
     message: 'No se ha encontrado lo que buscas'
   },
+  ValidationErrorInvalidFile: {
+    statusCode: 415,
+    message: 'Tipo de archivo no valido'
+  },
   InternalServerError: {
     statusCode: 503,
     message: 'Algo inesperado acaba de pasar... gracias por intentar más tarde'
-  },
-  ValidationErrorInvalidCredentials: {
-    statusCode: 401,
-    message: 'Credenciales inválidas'
-  },
-  ValidationErrorInvalideFile: {
-    statusCode: 415,
-    message: 'Tipo de archivo no valido'
   }
 };

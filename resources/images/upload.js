@@ -1,11 +1,11 @@
-const AWS = require('aws-sdk');
-const s3 = new AWS.S3({ apiVersion: '2008-10-17' });
-const fileType = require('file-type');
-const {
-  ValidationErrorInvalideFile,
+var AWS = require('aws-sdk');
+var s3 = new AWS.S3({ apiVersion: '2008-10-17' });
+var fileType = require('file-type');
+var {
+  ValidationErrorInvalidFile,
   InternalServerError
 } = require('../../constants/validationResponses');
-const sha1 = require('sha1');
+var sha1 = require('sha1');
 
 let getFile = function(fileMime, buffer) {
   let fileExt = fileMime.ext;
@@ -30,7 +30,7 @@ let getFile = function(fileMime, buffer) {
     full_path: fileFullPath
   };
 
-  console.log(uploadFile);
+  console.log('uploadFile', uploadFile);
   return {
     params: params,
     uploadFile: uploadFile
