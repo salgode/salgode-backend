@@ -1,48 +1,65 @@
 const aws = require('aws-sdk');
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const uuidv4 = require('uuid/v4');
-const moment = require('moment');
 
-async function acceptSlot(slotId, slotStatus) {
-  let data = await dynamoDB.transactWrite({
-    TransactItems: [
-        {
-            Update: {
-                TableName: process.env.dynamodb_table_name_slots,
-                Key: {
-                    "slot_id": tripId
-                },
-                UpdateExpression: "set accepted = :slot_status",
-                ExpressionAttributeValues: {
-                    ":slot_status": slotStatus
-                }
-            }
+async function getTripFromSlot(slotId){
+    let params = {
+        TableName: process.env.dynamodb_table_name_slots,
+        Key: {
+          "slot_id": slotId
         },
-        {
-            Update: {
-                TableName: process.env.dynamodb_table_name_trips,
-                Key: {
-                    "trip_id": tripId
-                },
-                UpdateExpression: "set available_seats = available_seats - :requested_seats",
-                ExpressionAttributeValues: {
-                    ":requested_seats": 1
-                }
-            }
-        }
-    ]
-  }).promise();
-  return data;
+        ProjectionExpression: "trip_id"
+    };
+    let data = await dynamoDB.get(params).promise();
+    return data.Item.trip_id;
+}
+
+async function acceptSlot(tripId, slotId, slotStatus) {
+  try {
+    await dynamoDB.transactWrite({
+      TransactItems: [
+          {
+              Update: {
+                  TableName: process.env.dynamodb_table_name_trips,
+                  Key: {
+                      "trip_id": tripId
+                  },
+                  ConditionExpression: "available_seats >= :available_seats",
+                  UpdateExpression: "set available_seats = available_seats - :requested_seats",
+                  ExpressionAttributeValues: {
+                      ":available_seats": 1,
+                      ":requested_seats": 1
+                  }
+              }
+          },
+          {
+              Update: {
+                  TableName: process.env.dynamodb_table_name_slots,
+                  Key: {
+                      "slot_id": slotId
+                  },
+                  UpdateExpression: "set slot_status = :slot_status",
+                  ExpressionAttributeValues: {
+                      ":slot_status": slotStatus
+                  }
+              }
+          }
+      ]
+    }).promise();
+    return true;
+  }
+  catch(e){
+    return false;
+  }
 }
 
 exports.handler = async (event) => {
-  let tripId = event.trip_id;
-  let userId = event.user_id;
+  let slotId = event.slot_id;
+  let slotStatus = event.slot_status;
 
-  await createSlot(tripId, userId);
+  let tripId = await getTripFromSlot(slotId);
 
   let result = {
-    created: true
+    accepted: await acceptSlot(tripId, slotId, slotStatus)
   };
 
   return result;
