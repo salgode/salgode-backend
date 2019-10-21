@@ -66,6 +66,10 @@ Se aprecia el aporte al backend de:
 - [Maurice Poirrier](https://github.com/mauricepoirrier)
 - [Felipe Navarro](https://github.com/fcnavarro)
 - [Bernardo Subercaseaux](https://github.com/bsubercaseaux)
+- [Juanfra Campos](https://github.com/jfcampos1)
+- [Cristian Eing](https://github.com/cristianeing)
+- [Antonio Fontaine](https://github.com/afontainec)
+- [Diego Bordeu](https://github.com/diegobordeu)
 
 <!-- BADGES -->
 
