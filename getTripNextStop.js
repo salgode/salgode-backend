@@ -22,21 +22,12 @@ module.exports.handler = function(event, context, callback) {
       return callback(null, NotFound);
     }
 
-    // if (
-    //   event.payload.Key.token !== getData.Item.token ||
-    //   event.payload.Key.id !== getData.Item.id ||
-    //   event.payload.Key.email !== getData.Item.email
-    // ) {
-    //   return callback(null, Unauthorized);
-    // }
-    console.log(getData.Item);
     if (getData.Item.trip_status !== 'in_progress') {
       return callback(null, invalidState);
     }
 
     var index = getData.Item.next_stop || 0;
     var spot_id = getData.Item.route_points[index];
-    console.log('VAMOS VAMOS', spot_id);
     if (!spot_id) {
       return callback(null, noSpotToGo);
     }

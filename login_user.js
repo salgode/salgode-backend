@@ -7,7 +7,7 @@ async function getUserFromLogin(userEmail) {
     TableName: process.env.dynamodb_table_name,
     IndexName: process.env.dynamodb_index_name_from_email,
     ProjectionExpression:
-      'user_id, password_hash, bearer_token, first_name, last_name, email, phone, user_identifications',
+      'user_id, password_hash, car, bearer_token, first_name, last_name, email, phone, user_identifications',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
       ':email': userEmail
