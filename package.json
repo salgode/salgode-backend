@@ -5,6 +5,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "release": "standard-version && git push --follow-tags origin master",
     "predeploy:UserCreate": "rm SalgodeUserCreate.zip && zip SalgodeUserCreate.zip SalgodeUserCreate.js",
     "predeploy:UserRead": "rm SalgodeUserRead.zip && zip SalgodeUserRead.zip SalgodeUserRead.js",
     "predeploy:UserUpdate": "rm SalgodeUserUpdate.zip && zip SalgodeUserUpdate.zip SalgodeUserUpdate.js",
