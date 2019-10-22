@@ -22,7 +22,7 @@ async function getUser(userId) {
     }
   };
   let data = await dynamoDB.query(params).promise();
-  return data.Items;
+  return data.Items[0];
 }
 
 exports.handler = async event => {
