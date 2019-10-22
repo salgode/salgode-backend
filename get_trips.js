@@ -4,10 +4,10 @@ async function getTrips() {
   const params = {
     TableName: process.env.dynamodb_table_name,
     ProjectionExpression: 'available_seats, driver_id, etd, route_points, trip_id, trip_status',
-    FilterExpression: 'trip_status in (:status_1, :status_2)',
+    FilterExpression: 'trip_status in (:open, :in_progress)',
     ExpressionAttributeValues: {
-      ':status_1': 'open',
-      ':status_2': 'in_progress'
+      ':open': 'open',
+      ':in_progress': 'in_progress'
     }
   };
   const data = await parallelScan(params, { concurrency: 1000 });
