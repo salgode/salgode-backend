@@ -1,27 +1,24 @@
 const aws = require('aws-sdk');
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function getSlots(userId) {
+async function getUser(userId) {
   let params = {
     TableName: process.env.dynamodb_table_name,
-    IndexName: process.env.dynamodb_index_name,
     ScanIndexForward: true,
     ProjectionExpression:
-      '#id, #name, #lastName, #selfieLink, #driverLicenseLink, #dniFrontLink, #dniBackLink, #car, #phone',
+      '#user_id, #email, #first_name, #last_name, #phone, #user_identifications, #car',
     ExpressionAttributeNames: {
-      '#id': 'id',
-      '#name': 'name',
-      '#lastName': 'lastName',
-      '#selfieLink': 'selfieLink',
-      '#driverLicenseLink': 'driverLicenseLink',
-      '#dniFrontLink': 'dniFrontLink',
-      '#dniBackLink': 'dniBackLink',
-      '#car': 'car',
-      '#phone': 'phone'
+      '#user_id': 'user_id',
+      '#email': 'email',
+      '#first_name': 'first_name',
+      '#last_name': 'last_name',
+      '#phone': 'phone',
+      '#user_identifications': 'user_identifications',
+      '#car': 'car'
     },
-    KeyConditionExpression: 'id = :id',
+    KeyConditionExpression: 'user_id = :user_id',
     ExpressionAttributeValues: {
-      ':id': userId
+      ':user_id': userId
     }
   };
   let data = await dynamoDB.query(params).promise();
@@ -30,7 +27,8 @@ async function getSlots(userId) {
 
 exports.handler = async event => {
   let userId = event.pathParameters.id;
-  let result = await getSlots(userId);
+  console.log('userId', userId);
+  let result = await getUser(userId);
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
