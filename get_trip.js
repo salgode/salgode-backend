@@ -6,9 +6,9 @@ async function getTrip(tripId) {
   const params = {
     TableName: process.env.dynamodb_table_name_trip,
     Key: {
-      trip_id: tripId,
+      trip_id: tripId
     },
-    ProjectionExpression: 'trip_id, created_at, route_points, trip_status, etd',
+    ProjectionExpression: 'trip_id, created_at, route_points, trip_status, etd'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -19,12 +19,12 @@ async function getSpot(spotID) {
   const params = {
     TableName: process.env.dynamodb_table_name_spot,
     Key: {
-      id: spotID,
+      id: spotID
     },
     ProjectionExpression: 'spot_id, address, city, commune, icon, lat, lon, #name, #type',
     ExpressionAttributeNames: {
       '#name': 'name',
-      '#type': 'type',
+      '#type': 'type'
     },
   };
   const data = await dynamoDB.get(params).promise();
@@ -33,7 +33,9 @@ async function getSpot(spotID) {
 
 async function translateSpotId(spotsArray) {
   return await Promise.all(
-    spotsArray.map(async (pointId) => await getSpot(pointId)),
+    spotsArray.map(async (pointId) => {
+      return await getSpot(pointId);
+    })
   );
 }
 
@@ -44,7 +46,7 @@ exports.handler = async (event) => {
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(tripResult),
+    body: JSON.stringify(tripResult)
   };
   return response;
 };
