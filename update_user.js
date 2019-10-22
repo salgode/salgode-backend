@@ -21,8 +21,6 @@ function parseUpdateParams(body, updateableAttrs, updatedAt) {
       expression += `${updateableAttrs[i]} = :${updateableAttrs[i]}, `;
       values[`:${updateableAttrs[i]}`] = body[updateableAttrs[i]];
     }
-    console.log('ACTUAL EXPRESSION', expression);
-    console.log('ACTUAL VALUES', values);
   }
   if (Object.keys(values).length) {
     expression += 'updatedAt = :updatedAt';
@@ -40,9 +38,6 @@ async function updateUser(userId, body) {
     updateableAttrs,
     updatedAt
   );
-
-  console.log('MADE EXPRESSION', updateExpression);
-  console.log('MADE VALUES', expressionAttributeValues);
 
   let params = {
     TableName: process.env.dynamodb_table_name,

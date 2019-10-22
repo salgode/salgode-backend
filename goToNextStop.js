@@ -4,7 +4,6 @@ var dynamoDb = new AWS.DynamoDB.DocumentClient();
 module.exports.handler = function(event, context, callback) {
   var timestamp = new Date().getTime();
 
-  // var tripId = event.tripId;
   var tripId = event.pathParameters.trip;
   if (!tripId) return callback(null, MissingIdOnRequestError);
 
