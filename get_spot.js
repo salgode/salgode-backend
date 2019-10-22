@@ -1,39 +1,40 @@
 const aws = require('aws-sdk');
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function getSpot(spotId) {
+async function getSpot(spotID) {
   let params = {
-    TableName: 'SalgodeSpot',
-    ScanIndexForward: true,
-    ProjectionExpression:
-      '#id, #address, #city, #commune, #icon, #lat, #lon, #name, #type',
-    ExpressionAttributeNames: {
-      '#id': 'id',
-      '#address': 'address',
-      '#city': 'city',
-      '#commune': 'commune',
-      '#icon': 'icon',
-      '#lat': 'lat',
-      '#lon': 'lon',
-      '#name': 'name',
-      '#type': 'type'
-    },
-    KeyConditionExpression: 'id = :id',
-    ExpressionAttributeValues: {
-      ':id': spotId
-    }
+      TableName : process.env.dynamodb_table_name,
+      Key: {
+          "id": spotID
+      },
+      ProjectionExpression: "spot_id, address, city, commune, icon, lat, lon, #name, #type",
+      ExpressionAttributeNames: {
+          "#name": "name",
+          "#type": "type"
+      }
   };
-  let data = await dynamoDB.query(params).promise();
-  return data.Items;
+  let data = await dynamoDB.get(params).promise();
+  return data.Item;
 }
 
-exports.handler = async event => {
+exports.handler = async (event) => {
   let spotId = event.pathParameters.spot;
   let result = await getSpot(spotId);
-  const response = {
-    statusCode: 200,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(result[0])
-  };
-  return response;
+  if (result) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(result)
+    };
+  }
+  else {
+    let responseBody = {
+      message: 'Spot does not exist'
+    };
+    return {
+      statusCode: 422,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(responseBody)
+    };
+  }
 };
