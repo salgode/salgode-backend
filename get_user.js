@@ -8,10 +8,26 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, bearer_token, email, first_name, last_name, phone, user_identifications, vehicles'
+    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
+}
+
+function parseBody(result) {
+  return {
+    user_id: result.user_id,
+    first_name: result.first_name,
+    last_name: result.last_name,
+    avatar: result.user_identifications.selfie_image,
+    verifications: {
+      phone: result.phone.length > 0,
+      identity:
+        !!(result.user_identifications.identification_image_front.length > 0
+          && result.user_identifications.identification_image_back.length > 0),
+      driver_license: result.user_identifications.driver_license.length > 0
+    }
+  };
 }
 
 exports.handler = async (event) => {
@@ -21,7 +37,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(result)
+      body: JSON.stringify(parseBody(result))
     };
   }
 
