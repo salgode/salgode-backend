@@ -7,7 +7,7 @@ const moment = require('moment');
 
 async function createTrip(driverId, etd, routePoints) {
   const tripId = `tri_${uuidv4()}`;
-  const createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const params = {
     TableName: process.env.dynamodb_table_name,
     Item: {
@@ -17,7 +17,8 @@ async function createTrip(driverId, etd, routePoints) {
       available_seats: 4,
       route_points: routePoints,
       trip_status: 'open',
-      created_at: createdAt
+      created_at: timestamp,
+      updated_at: timestamp
     }
   };
   const data = await dynamoDB.put(params).promise();
