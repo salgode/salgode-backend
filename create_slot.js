@@ -1,18 +1,19 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
-async function createSlot(tripId, userId) {
-  let slotId = 'slo_' + uuidv4();
-  let createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+async function createSlot(tripId, userId, spotId) {
+  const slotId = `slo_${uuidv4()}`;
+  const createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
     await dynamoDB
       .transactWrite({
         TransactItems: [
           {
             ConditionCheck: {
-              TableName: process.env.dynamodb_table_name_trips,
+              TableName: process.env.dynamodb_trips_table_name,
               Key: {
                 trip_id: tripId
               },
@@ -24,11 +25,12 @@ async function createSlot(tripId, userId) {
           },
           {
             Put: {
-              TableName: process.env.dynamodb_table_name_slots,
+              TableName: process.env.dynamodb_slots_table_name,
               Item: {
                 slot_id: slotId,
                 trip_id: tripId,
                 user_id: userId,
+                spot_id: spotId,
                 slot_status: 'requested',
                 created_at: createdAt
               }
@@ -39,17 +41,30 @@ async function createSlot(tripId, userId) {
       .promise();
     return true;
   } catch (e) {
+    console.log(e);
     return false;
   }
 }
 
-exports.handler = async event => {
-  let tripId = event.trip_id;
-  let userId = event.user_id;
+exports.handler = async (event) => {
+  console.log(event.body);
+  const body = JSON.parse(event.body);
+  const tripId = event.pathParameters.trip;
+  const userId = body.user_id;
+  const spotId = body.spot_id;
 
-  let result = {
-    created: await createSlot(tripId, userId)
+  const result = await createSlot(tripId, userId, spotId);
+
+  if (result) {
+    return {
+      statusCode: 202,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ created: true })
+    };
+  }
+  return {
+    statusCode: 409,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ created: false })
   };
-
-  return result;
 };
