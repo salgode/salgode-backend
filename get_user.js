@@ -8,14 +8,14 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, email, first_name, last_name, phone, user_identifications, car'
+    ProjectionExpression: 'user_id, bearer_token, email, first_name, last_name, phone, user_identifications, vehicles'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
 }
 
 exports.handler = async (event) => {
-  const userId = event.pathParameters.id;
+  const userId = event.pathParameters.user;
   const result = await getUser(userId);
   if (result) {
     return {
