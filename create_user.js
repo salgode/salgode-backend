@@ -1,9 +1,9 @@
 const aws = require('aws-sdk');
-
-const dynamoDB = new aws.DynamoDB.DocumentClient();
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 const bcrypt = require('bcryptjs');
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function hashPassword(userPassword) {
   const Salt = bcrypt.genSaltSync(15);
@@ -50,7 +50,8 @@ async function createUser(
           identificationImages.identification_image_front,
         identification_image_back:
           identificationImages.identification_image_back,
-        selfie_image: identificationImages.selfie_image
+        selfie_image: identificationImages.selfie_image,
+        driver_license: identificationImages.driver_license
       },
       created_at: createdAt,
       updated_at: createdAt
@@ -71,7 +72,7 @@ exports.handler = async (event) => {
 
   const emailIsUsed = await checkEmail(userEmail);
 
-  if (emailIsUsed > 0) {
+  if (emailIsUsed) {
     const responseBody = {
       message: 'Email has already been used'
     };
