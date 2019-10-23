@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unresolved
 const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
@@ -21,11 +22,11 @@ async function getSpot(spotID) {
     Key: {
       id: spotID
     },
-    ProjectionExpression: 'spot_id, address, city, commune, icon, lat, lon, #name, #type',
+    ProjectionExpression: 'spot_id, address, id, city, commune, icon, lat, lon, #name, #type',
     ExpressionAttributeNames: {
       '#name': 'name',
       '#type': 'type'
-    },
+    }
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -33,9 +34,7 @@ async function getSpot(spotID) {
 
 async function translateSpotId(spotsArray) {
   return await Promise.all(
-    spotsArray.map(async (pointId) => {
-      return await getSpot(pointId);
-    })
+    spotsArray.map(async (pointId) => await getSpot(pointId))
   );
 }
 
