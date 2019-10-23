@@ -15,7 +15,8 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'comma-dangle': ['error', 'never']
+    'comma-dangle': ['error', 'never'],
+    'import/no-unresolved': 0
   },
   settings: {
     'import/core-modules': [ 'aws-sdk' ]

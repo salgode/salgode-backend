@@ -41,13 +41,12 @@ async function createSlot(tripId, userId, spotId) {
       .promise();
     return true;
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return false;
   }
 }
 
 exports.handler = async (event) => {
-  console.log(event.body);
   const body = JSON.parse(event.body);
   const tripId = event.pathParameters.trip;
   const userId = body.user_id;

@@ -1,15 +1,16 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function getTripFromSlot(slotId) {
-  let params = {
+  const params = {
     TableName: process.env.dynamodb_table_name_slots,
     Key: {
       slot_id: slotId
     },
     ProjectionExpression: 'trip_id'
   };
-  let data = await dynamoDB.get(params).promise();
+  const data = await dynamoDB.get(params).promise();
   return data.Item.trip_id;
 }
 
@@ -54,13 +55,13 @@ async function acceptSlot(tripId, slotId, slotStatus) {
   }
 }
 
-exports.handler = async event => {
-  let slotId = event.slot_id;
-  let slotStatus = event.slot_status;
+exports.handler = async (event) => {
+  const slotId = event.slot_id;
+  const slotStatus = event.slot_status;
 
-  let tripId = await getTripFromSlot(slotId);
+  const tripId = await getTripFromSlot(slotId);
 
-  let result = {
+  const result = {
     accepted: await acceptSlot(tripId, slotId, slotStatus)
   };
 

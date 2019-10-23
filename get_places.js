@@ -1,7 +1,7 @@
 const { parallelScan } = require('@shelf/dynamodb-parallel-scan');
 
 async function getSpots() {
-  let params = {
+  const params = {
     TableName: process.env.dynamodb_table_name,
     ProjectionExpression: '#id, #name, #address, #city',
     ExpressionAttributeNames: {
@@ -11,12 +11,12 @@ async function getSpots() {
       '#city': 'city'
     }
   };
-  let data = await parallelScan(params, { concurrency: 1000 });
+  const data = await parallelScan(params, { concurrency: 1000 });
   return data;
 }
 
-exports.handler = async event => {
-  let query = await getSpots();
+exports.handler = async (event) => {
+  const query = await getSpots();
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },

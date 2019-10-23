@@ -2,21 +2,25 @@ const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function getUser(userId) {
+async function getSpot(spotID) {
   const params = {
     TableName: process.env.dynamodb_table_name,
     Key: {
-      user_id: userId
+      id: spotID
     },
-    ProjectionExpression: 'user_id, email, first_name, last_name, phone, user_identifications, car'
+    ProjectionExpression: 'spot_id, address, city, commune, icon, lat, lon, #name, #type',
+    ExpressionAttributeNames: {
+      '#name': 'name',
+      '#type': 'type'
+    }
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
 }
 
 exports.handler = async (event) => {
-  const userId = event.pathParameters.id;
-  const result = await getUser(userId);
+  const spotId = event.pathParameters.spot;
+  const result = await getSpot(spotId);
   if (result) {
     return {
       statusCode: 200,
@@ -26,7 +30,7 @@ exports.handler = async (event) => {
   }
 
   const responseBody = {
-    message: 'User does not exist'
+    message: 'Spot does not exist'
   };
   return {
     statusCode: 422,

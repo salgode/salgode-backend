@@ -1,11 +1,30 @@
 const AWS = require('aws-sdk');
-var dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-module.exports.handler = function(event, context, callback) {
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
+
+const invalidState = {
+  statusCode: 400,
+  message: 'El viaje no esta en curso'
+};
+
+const NoSpotToGo = {
+  statusCode: 400,
+  message: 'No hay destino registrado'
+};
+const NotFound = {
+  statusCode: 404,
+  message: 'No se ha encontrado lo que buscas'
+};
+const InternalServerError = {
+  statusCode: 503,
+  message: 'Algo inesperado acaba de pasar... gracias por intentar más tarde'
+};
+
+module.exports.handler = function getTripNextPlace(event, context, callback) {
   // var tripId = event.tripId;
-  var tripId = event.pathParameters.trip;
+  const tripId = event.pathParameters.trip;
   console.log({ tripId });
-  var getParams = {
+  const getParams = {
     TableName: 'SalgoDe_Trips',
     Key: {
       trip_id: tripId
@@ -26,16 +45,16 @@ module.exports.handler = function(event, context, callback) {
       return callback(null, invalidState);
     }
 
-    var index = getData.Item.next_stop || 0;
-    var spot_id = getData.Item.route_points[index];
-    if (!spot_id) {
-      return callback(null, noSpotToGo);
+    const index = getData.Item.next_stop || 0;
+    const spotId = getData.Item.route_points[index];
+    if (!spotId) {
+      return callback(null, NoSpotToGo);
     }
 
-    var getSpotParam = {
+    const getSpotParam = {
       TableName: 'SalgodeSpot',
       Key: {
-        id: spot_id
+        id: spotId
       }
     };
 
@@ -45,7 +64,7 @@ module.exports.handler = function(event, context, callback) {
         return callback(null, InternalServerError);
       }
       const body = { next_stop_index: index, stop: spot.Item };
-      var response = {
+      const response = {
         statusCode: 200,
         body: JSON.stringify(body)
       };
@@ -57,31 +76,3 @@ module.exports.handler = function(event, context, callback) {
 function isEmpty(obj) {
   return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
-
-var ValidationErrorPasswordMismatch = {
-  statusCode: 400,
-  message: 'Las contraseñas no coinciden'
-};
-
-var invalidState = {
-  statusCode: 400,
-  message: 'El viaje no esta en curso'
-};
-
-var noSpotToGo = {
-  statusCode: 400,
-  message: 'No hay destino registrado'
-};
-
-var Unauthorized = {
-  statusCode: 401,
-  message: 'No estás autorizado para esto'
-};
-var NotFound = {
-  statusCode: 404,
-  message: 'No se ha encontrado lo que buscas'
-};
-var InternalServerError = {
-  statusCode: 503,
-  message: 'Algo inesperado acaba de pasar... gracias por intentar más tarde'
-};

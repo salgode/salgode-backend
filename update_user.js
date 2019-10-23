@@ -1,6 +1,6 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
 const updateableAttrs = [
@@ -13,10 +13,8 @@ const updateableAttrs = [
 
 function parseUpdateParams(body, updateableAttrs, updatedAt) {
   let expression = 'SET ';
-  let values = {};
+  const values = {};
   for (let i = 0; i < updateableAttrs.length; i++) {
-    console.log('Checking updateableAttrs');
-    console.log(body[updateableAttrs[i]]);
     if (body[updateableAttrs[i]]) {
       expression += `${updateableAttrs[i]} = :${updateableAttrs[i]}, `;
       values[`:${updateableAttrs[i]}`] = body[updateableAttrs[i]];
@@ -32,14 +30,14 @@ function parseUpdateParams(body, updateableAttrs, updatedAt) {
 }
 
 async function updateUser(userId, body) {
-  let updatedAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  let [updateExpression, expressionAttributeValues] = parseUpdateParams(
+  const updatedAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const [updateExpression, expressionAttributeValues] = parseUpdateParams(
     body,
     updateableAttrs,
     updatedAt
   );
 
-  let params = {
+  const params = {
     TableName: process.env.dynamodb_table_name,
     Key: {
       user_id: userId
@@ -48,17 +46,17 @@ async function updateUser(userId, body) {
     ExpressionAttributeValues: expressionAttributeValues,
     ReturnValues: 'NONE'
   };
-  let data = await dynamoDB.update(params).promise();
+  const data = await dynamoDB.update(params).promise();
   return data;
 }
 
-exports.handler = async event => {
-  let userId = event.pathParameters.id;
-  let body = JSON.parse(event.body);
+exports.handler = async (event) => {
+  const userId = event.pathParameters.id;
+  const body = JSON.parse(event.body);
   await updateUser(userId, body);
 
-  let message = { updated: true };
-  let result = {
+  const message = { updated: true };
+  const result = {
     body: JSON.stringify(message)
   };
 

@@ -1,9 +1,10 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 const bcrypt = require('bcryptjs');
 
 async function getUserFromLogin(userEmail) {
-  let params = {
+  const params = {
     TableName: process.env.dynamodb_table_name,
     IndexName: process.env.dynamodb_index_name_from_email,
     ProjectionExpression:
@@ -13,20 +14,19 @@ async function getUserFromLogin(userEmail) {
       ':email': userEmail
     }
   };
-  let data = await dynamoDB.query(params).promise();
+  const data = await dynamoDB.query(params).promise();
   return data.Items[0];
 }
 
-exports.handler = async event => {
-  let loginEmail = event.email;
-  let loginPassword = event.password;
-  let userFromLogin = await getUserFromLogin(loginEmail);
-  let hashedPassword = userFromLogin.password_hash;
+exports.handler = async (event) => {
+  const loginEmail = event.email;
+  const loginPassword = event.password;
+  const userFromLogin = await getUserFromLogin(loginEmail);
+  const hashedPassword = userFromLogin.password_hash;
   delete userFromLogin.password_hash;
 
   if (bcrypt.compareSync(loginPassword, hashedPassword)) {
     return userFromLogin;
-  } else {
-    return { error: true, message: 'Unauthorized' };
   }
+  return { error: true, message: 'Unauthorized' };
 };
