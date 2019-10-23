@@ -16,5 +16,8 @@ module.exports = {
   },
   rules: {
     'comma-dangle': ['error', 'never']
+  },
+  settings: {
+    'import/core-modules': [ 'aws-sdk' ]
   }
 };
