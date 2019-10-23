@@ -112,9 +112,7 @@ exports.handler = async (event) => {
         identification_image_back:
             identificationImages.identification_image_back,
         selfie_image: identificationImages.selfie_image
-      },
-      created_at: createdAt,
-      updated_at: createdAt
+      }
     }
   };
   return {
