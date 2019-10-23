@@ -1,5 +1,6 @@
 {
-  "name": "salgode-api",
+  "name": "salgode-backend",
+  "description": "SalgoDe Backend",
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
