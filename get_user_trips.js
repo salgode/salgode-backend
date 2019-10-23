@@ -56,14 +56,22 @@ async function translateTripId(tripSlotsArray) {
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const user_id = event.pathParameters.id
   const query = event.queryStringParameters && event.queryStringParameters.role ? event.queryStringParameters.role : false;
-  const allDriverTrips = await getTripAsDriver(user_id);
-  const allUserTripIds = await getTripForUser(user_id);
-  let allTrips = await translateTripId(allUserTripIds)
-  if (!query) {
-    allTrips = allTrips.concat(allDriverTrips);
-  } else if (query === "driver") {
-    allTrips = allDriverTrips
+  let allDriverTrips = []
+  let allUserTripIds = []
+  switch (query) {
+    case "pax":
+      allUserTripIds = await getTripForUser(user_id);
+      break;
+    case "driver":
+      allDriverTrips = await getTripAsDriver(user_id);
+      break;
+    default:
+      allDriverTrips = await getTripAsDriver(user_id);
+      allUserTripIds = await getTripForUser(user_id);
+      break;
   }
+  let allTrips = await translateTripId(allUserTripIds)
+  allTrips = allTrips.concat(allDriverTrips);
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
