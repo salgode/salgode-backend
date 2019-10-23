@@ -1,36 +1,33 @@
-const AWS = require('aws-sdk');
+const aws = require('aws-sdk');
 
-const docClient = new AWS.DynamoDB.DocumentClient();
+// eslint-disable-next-line import/no-absolute-path
+const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function getTripAsDriver(userId) {
   const params = {
     TableName: process.env.dynamodb_trips_table_name,
-    IndexName: 'driver_id-index',
-    KeyConditionExpression: '#driver = :driver',
-    ExpressionAttributeNames: {
-      '#driver': 'driver_id'
-    },
+    IndexName: process.env.dynamodb_trips_index_name,
+    KeyConditionExpression: 'driver_id = :userId',
     ExpressionAttributeValues: {
-      ':driver': userId
+      ':userId': userId
     }
   };
-  const data = await docClient.query(params).promise();
+  const data = await dynamoDB.query(params).promise();
   return data.Items;
 }
 
-async function getTripForUser(userId) {
+async function getReservations(userId) {
   const params = {
-    TableName: process.env.dynamodb_trips_slot_table_name,
-    IndexName: 'user_id-index',
-    KeyConditionExpression: '#user = :user',
-    ExpressionAttributeNames: {
-      '#user': 'user_id'
-    },
+    TableName: process.env.dynamodb_reservations_table_name,
+    IndexName: process.env.dynamodb_reservations_index_name,
+    KeyConditionExpression: 'passenger_id = :userId',
     ExpressionAttributeValues: {
-      ':user': userId
+      ':userId': userId
     }
   };
-  const data = await docClient.query(params).promise();
+  const data = await dynamoDB.query(params).promise();
   return data.Items;
 }
 
@@ -40,41 +37,32 @@ async function getTrip(tripId) {
     Key: {
       trip_id: tripId
     },
-    ProjectionExpression: 'trip_id, created_at, route_points, trip_status, etd'
+    ProjectionExpression: 'trip_id, route_points, trip_status, etd'
   };
-  const data = await docClient.get(params).promise();
+  const data = await dynamoDB.get(params).promise();
   return data.Item;
 }
 
-async function translateTripId(tripSlotsArray) {
+async function getTrips(reservations) {
   return Promise.all(
-    tripSlotsArray.map(async (tripSlot) => getTrip(tripSlot.trip_id))
+    reservations.slice(0, 10).map(async (r) => getTrip(r.trip_id))
   );
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
-  const userId = event.pathParameters.id;
-  const query = event.queryStringParameters && event.queryStringParameters.role ? event.queryStringParameters.role : false;
-  let allDriverTrips = [];
-  let allUserTripIds = [];
-  switch (query) {
-    case 'pax':
-      allUserTripIds = await getTripForUser(userId);
-      break;
-    case 'driver':
-      allDriverTrips = await getTripAsDriver(userId);
-      break;
-    default:
-      allDriverTrips = await getTripAsDriver(userId);
-      allUserTripIds = await getTripForUser(userId);
-      break;
-  }
-  let allTrips = await translateTripId(allUserTripIds);
-  allTrips = allTrips.concat(allDriverTrips);
+  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+
+  const allDriverTrips = await getTripAsDriver(userId);
+
+  const reservations = await getReservations(userId);
+  const allPassengerTrips = await getTrips(reservations);
+
+  const allUserTrips = [...allPassengerTrips, ...allDriverTrips];
+
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(allTrips)
+    body: JSON.stringify(allUserTrips)
   };
   return response;
 };
