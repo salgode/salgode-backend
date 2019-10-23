@@ -2,6 +2,10 @@ const AWS = require('aws-sdk');
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
 const MissingIdOnRequestError = {
   statusCode: 400,
   message: 'Id de trip no especificada en request'
@@ -35,7 +39,6 @@ module.exports.handler = function forwardTripPlace(event, context, callback) {
 
   return dynamoDb.get(getParams, (error, getData) => {
     if (error) {
-      console.error(error);
       return callback(null, InternalServerError);
     }
     if (isEmpty(getData)) {
@@ -62,7 +65,6 @@ module.exports.handler = function forwardTripPlace(event, context, callback) {
 
     return dynamoDb.put(putParams, (error) => {
       if (error) {
-        console.error(error);
         return callback(null, InternalServerError);
       }
 
@@ -73,7 +75,3 @@ module.exports.handler = function forwardTripPlace(event, context, callback) {
     });
   });
 };
-
-function isEmpty(obj) {
-  return Object.keys(obj).length === 0 && obj.constructor === Object;
-}
