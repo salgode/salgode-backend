@@ -91,7 +91,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, phone, user_identifications.selfie_image'
+    ProjectionExpression: 'user_id, first_name, score, phone, user_identifications.selfie_image'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -144,10 +144,10 @@ exports.handler = async (event) => {
       ? theReservation.route.end
       : routePoints[routePoints.length - 1];
     const nextPoint = routePoints[theTrip.current_point + 1];
-    const onBoard = isSelfDriver
-      || theReservation
-      ? checkOnBoard(routeStart, theTrip.current_point, routePoints)
-      : null;
+    const onBoard = (isSelfDriver && theTrip.trip_status === 'in_progress')
+      || (theReservation
+        ? checkOnBoard(routeStart, theTrip.current_point, routePoints)
+        : null);
     const responseBody = {
       on_board: onBoard,
       trip_id: theTrip.trip_id,
@@ -156,10 +156,11 @@ exports.handler = async (event) => {
       next_point: nextPoint,
       is_driver: isSelfDriver,
       driver: {
-        driver_id: theDriver.driver_id,
+        driver_id: theDriver.user_id,
         driver_name: theDriver.first_name,
         driver_phone: theDriver.phone,
-        driver_score: theDriver.score
+        driver_score: theDriver.score,
+        driver_avatar: theDriver.user_identifications.selfie_image
       },
       vehicle: {
         vehicle_id: theVehicle.vehicle_id,
