@@ -2,68 +2,74 @@ const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function getTripFromSlot(slotId) {
+async function getReservation(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_slots,
+    TableName: process.env.dynamodb_reservations_table_name,
     Key: {
-      slot_id: slotId
+      reservation_id: reservationId
     },
-    ProjectionExpression: 'trip_id'
+    ProjectionExpression: 'trip_id, reserved_seats, reservation_id'
   };
   const data = await dynamoDB.get(params).promise();
-  return data.Item.trip_id;
+  return data.Item;
 }
 
-async function acceptSlot(tripId, slotId, slotStatus) {
+async function acceptReservation(reservation) {
+  const updatedStatus = 'accepted';
   try {
     await dynamoDB
       .transactWrite({
         TransactItems: [
           {
             Update: {
-              TableName: process.env.dynamodb_table_name_trips,
+              TableName: process.env.dynamodb_reservations_table_name,
               Key: {
-                trip_id: tripId
+                reservation_id: reservation.reservation_id
               },
-              ConditionExpression: 'available_seats >= :available_seats',
-              UpdateExpression:
-                'set available_seats = available_seats - :requested_seats',
+              UpdateExpression: 'set reservation_status = :new_status',
               ExpressionAttributeValues: {
-                ':available_seats': 1,
-                ':requested_seats': 1
+                ':new_status': updatedStatus
               }
             }
           },
           {
             Update: {
-              TableName: process.env.dynamodb_table_name_slots,
+              TableName: process.env.dynamodb_trips_table_name,
               Key: {
-                slot_id: slotId
+                trip_id: reservation.trip_id
               },
-              UpdateExpression: 'set slot_status = :slot_status',
+              ConditionExpression: 'available_seats >= :reserved_seats',
+              UpdateExpression:
+                'set available_seats = available_seats - :reserved_seats',
               ExpressionAttributeValues: {
-                ':slot_status': slotStatus
+                ':reserved_seats': reservation.reserved_seats
               }
             }
           }
         ]
       })
       .promise();
-    return true;
+    return { reservation_id: reservation.reservation_id, reservation_status: updatedStatus };
   } catch (e) {
     return false;
   }
 }
 
 exports.handler = async (event) => {
-  const slotId = event.slot_id;
-  const slotStatus = event.slot_status;
+  const reservationId = event.pathParameters.reservation;
+  const reservation = await getReservation(reservationId);
 
-  const tripId = await getTripFromSlot(slotId);
-
-  const result = {
-    accepted: await acceptSlot(tripId, slotId, slotStatus)
+  const result = await acceptReservation(reservation);
+  if (result) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(result)
+    };
+  }
+  return {
+    statusCode: 409,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ accepted: false })
   };
-
-  return result;
 };
