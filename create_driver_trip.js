@@ -7,7 +7,7 @@ const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function createTrip(driverId, etd, routePoints) {
+async function createTrip(driverId, vehicleId, availableSeats, tripTimes, routePoints) {
   const tripId = `tri_${uuidv4()}`;
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const params = {
@@ -15,8 +15,9 @@ async function createTrip(driverId, etd, routePoints) {
     Item: {
       trip_id: tripId,
       driver_id: driverId,
-      etd,
-      available_seats: 4,
+      vehicle_id: vehicleId,
+      trip_times: tripTimes,
+      available_seats: availableSeats,
       route_points: routePoints,
       trip_status: 'open',
       created_at: timestamp,
@@ -30,10 +31,12 @@ async function createTrip(driverId, etd, routePoints) {
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const body = JSON.parse(event.body);
-  const { etd } = body;
+  const tripTimes = body.trip_times;
   const routePoints = body.route_points;
+  const vehicleId = body.vehicle_id;
+  const availableSeats = body.available_seats;
 
-  await createTrip(userId, etd, routePoints);
+  await createTrip(userId, vehicleId, availableSeats, tripTimes, routePoints);
 
   return {
     statusCode: 201,
