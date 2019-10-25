@@ -2,7 +2,7 @@ const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-function generatePolicy(principalId, effect, resource) {
+function generatePolicy(principalId, effect, userId) {
   const policy = {
     principalId,
     policyDocument: {
@@ -10,8 +10,11 @@ function generatePolicy(principalId, effect, resource) {
       Statement: [{
         Action: 'execute-api:Invoke',
         Effect: effect,
-        Resource: resource
+        Resource: '*'
       }]
+    },
+    context: {
+      user_id: userId
     }
   };
   return policy;
@@ -36,11 +39,10 @@ async function validateToken(userToken) {
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userToken = event.authorizationToken;
-  const arn = event.methodArn;
   const user = await validateToken(userToken);
   if (user) {
-    return generatePolicy('user', 'Allow', arn);
+    return generatePolicy('user', 'Allow', user.user_id);
   } else { // eslint-disable-line no-else-return
-    return generatePolicy('user', 'Deny', arn);
+    return generatePolicy('user', 'Deny', null);
   }
 };
