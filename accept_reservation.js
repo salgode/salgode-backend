@@ -1,4 +1,5 @@
 const aws = require('aws-sdk');
+const moment = require('moment');
 
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
@@ -19,6 +20,7 @@ async function getReservedSeats(reservationId) {
 
 async function acceptReservation(reservedSeats, reservationId, tripId) {
   const updatedStatus = 'accepted';
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
     await dynamoDB
       .transactWrite({
@@ -43,9 +45,10 @@ async function acceptReservation(reservedSeats, reservationId, tripId) {
               },
               ConditionExpression: 'available_seats >= :reserved_seats',
               UpdateExpression:
-                'set available_seats = available_seats - :reserved_seats',
+                'set available_seats = available_seats - :reserved_seats, updated_at = :now',
               ExpressionAttributeValues: {
-                ':reserved_seats': reservedSeats
+                ':reserved_seats': reservedSeats,
+                ':now': timestamp
               }
             }
           }
