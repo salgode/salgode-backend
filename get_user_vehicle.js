@@ -3,21 +3,24 @@ const aws = require('aws-sdk');
 // eslint-disable-next-line import/no-absolute-path
 const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
-
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const UserTableName = process.env.dynamodb_user_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicle_table_name;
+const UserTableName = process.env.dynamodb_users_table_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
-async function getUser(userId) {
+async function getUserVehicle(userId, vehicleId) {
   const params = {
     TableName: UserTableName,
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications, vehicles'
+    ProjectionExpression: 'vehicles'
   };
   const data = await dynamoDB.get(params).promise();
-  return data.Item;
+  if (data && data.Item && data.Item.vehicles) {
+    const filteredVehicleArray = data.Item.vehicles.filter((v) => v.vehicle_id === vehicleId);
+    return filteredVehicleArray.length > 0 ? filteredVehicleArray[0] : null;
+  }
+  return null;
 }
 
 async function getVehicle(vehicleId) {
@@ -34,26 +37,31 @@ async function getVehicle(vehicleId) {
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const vehicleId = event.pathParameters.vehicle;
-  const user = await getUser(userId);
-  let responseBody = [];
-  const userDesideredVehicle = user.vehicles.filter((vehicle) => vehicle.vehicle_id == vehicleId);
-  if (userDesideredVehicle.length !== 0) {
-    const vehicle = await getVehicle(vehicleId);
-    responseBody = {
-      nickname: userDesideredVehicle[0].nickname,
-      seats: userDesideredVehicle[0].seats,
-      type: userDesideredVehicle[0].type,
-      vehicle_id: vehicleId,
-      vehicle_information: {
-        vehicle
-      }
-    };
-  }
+  const userVehicle = await getUserVehicle(userId, vehicleId);
 
+  if (userVehicle) {
+    const theVehicle = await getVehicle(vehicleId);
+    const responseBody = {
+      vehicle_id: theVehicle.vehicle_id,
+      nickname: userVehicle.nickname,
+      seats: theVehicle.seats,
+      type: theVehicle.type,
+      color: theVehicle.color,
+      brand: theVehicle.brand,
+      model: theVehicle.model,
+      vehicle_identifications: theVehicle.vehicle_identifications
+    };
+    const response = {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(responseBody)
+    };
+    return response;
+  }
   const response = {
-    statusCode: 200,
+    statusCode: 403,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+    body: JSON.stringify({ message: 'Forbidden access' })
   };
   return response;
 };
