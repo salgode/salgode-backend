@@ -5,10 +5,20 @@ const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
+const TripsTableName = process.env.dynamodb_trips_table_name;
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+
+function mapTripKeys(tripsIds) {
+  return tripsIds.map((tripId) => ({
+    trip_id: tripId
+  }));
+}
+
 async function getReservations(userId) {
   const params = {
-    TableName: process.env.dynamodb_reservations_table_name,
-    IndexName: process.env.dynamodb_index_name,
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
     KeyConditionExpression: 'passenger_id = :userId',
     ExpressionAttributeValues: {
       ':userId': userId
@@ -18,34 +28,41 @@ async function getReservations(userId) {
   return data.Items;
 }
 
-async function getTrip(tripId) {
+async function getTripsByIds(tripsIds) {
   const params = {
-    TableName: process.env.dynamodb_trips_table_name,
-    Key: {
-      trip_id: tripId
+    RequestItems: {
+      [TripsTableName]: {
+        Keys: mapTripKeys(tripsIds),
+        AttributesToGet: [
+          'trip_id',
+          'trip_status',
+          'trip_times',
+          'driver_id',
+          'vehicle_id',
+          'available_seats',
+          'current_point',
+          'route_points'
+        ],
+        ConsistentRead: false
+      }
     },
-    ProjectionExpression: 'trip_id, route_points, trip_status, etd'
+    ReturnConsumedCapacity: 'NONE'
   };
-  const data = await dynamoDB.get(params).promise();
-  return data.Item;
-}
-
-async function getTrips(reservations) {
-  return Promise.all(
-    reservations.slice(0, 15).map(async (r) => getTrip(r.trip_id))
-  );
+  const data = await dynamoDB.batchGet(params).promise();
+  return data.Responses[TripsTableName];
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
 
   const reservations = await getReservations(userId);
-  const allPassengerTrips = await getTrips(reservations);
+  const tripIds = reservations.map((r) => r.trip_id);
+  const trips = await getTripsByIds(tripIds);
 
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(allPassengerTrips)
+    body: JSON.stringify(trips)
   };
   return response;
 };
