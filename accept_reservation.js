@@ -1,20 +1,23 @@
 const aws = require('aws-sdk');
 
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const TripsTableName = process.env.dynamodb_trips_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function getReservation(reservationId) {
+async function getReservedSeats(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_reservations_table_name,
+    TableName: ReservationsTableName,
     Key: {
       reservation_id: reservationId
     },
-    ProjectionExpression: 'trip_id, reserved_seats, reservation_id'
+    ProjectionExpression: 'reserved_seats'
   };
   const data = await dynamoDB.get(params).promise();
-  return data.Item;
+  return data.Item.reserved_seats;
 }
 
-async function acceptReservation(reservation) {
+async function acceptReservation(reservedSeats, reservationId, tripId) {
   const updatedStatus = 'accepted';
   try {
     await dynamoDB
@@ -22,9 +25,9 @@ async function acceptReservation(reservation) {
         TransactItems: [
           {
             Update: {
-              TableName: process.env.dynamodb_reservations_table_name,
+              TableName: ReservationsTableName,
               Key: {
-                reservation_id: reservation.reservation_id
+                reservation_id: reservationId
               },
               UpdateExpression: 'set reservation_status = :new_status',
               ExpressionAttributeValues: {
@@ -34,32 +37,34 @@ async function acceptReservation(reservation) {
           },
           {
             Update: {
-              TableName: process.env.dynamodb_trips_table_name,
+              TableName: TripsTableName,
               Key: {
-                trip_id: reservation.trip_id
+                trip_id: tripId
               },
               ConditionExpression: 'available_seats >= :reserved_seats',
               UpdateExpression:
                 'set available_seats = available_seats - :reserved_seats',
               ExpressionAttributeValues: {
-                ':reserved_seats': reservation.reserved_seats
+                ':reserved_seats': reservedSeats
               }
             }
           }
         ]
       })
       .promise();
-    return { reservation_id: reservation.reservation_id, reservation_status: updatedStatus };
+    return { reservation_id: reservationId, reservation_status: updatedStatus };
   } catch (e) {
     return false;
   }
 }
 
 exports.handler = async (event) => {
+  const tripId = event.pathParameters.trip;
   const reservationId = event.pathParameters.reservation;
-  const reservation = await getReservation(reservationId);
+  const reservedSeats = await getReservedSeats(reservationId);
 
-  const result = await acceptReservation(reservation);
+  const result = await acceptReservation(reservedSeats, reservationId, tripId);
+
   if (result) {
     return {
       statusCode: 200,
