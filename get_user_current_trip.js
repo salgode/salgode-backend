@@ -50,7 +50,7 @@ async function getAcceptedReservations(userId) {
     IndexName: ReservationsIndexName,
     ProjectionExpression: 'passenger_id, trip_id, route, updated_at',
     KeyConditionExpression: 'passenger_id = :passenger_id',
-    FilterConditionExpression: 'reservation_status = in_progress',
+    FilterConditionExpression: 'reservation_status = accepted',
     ExpressionAttributeValues: {
       ':passenger_id': userId
     },
