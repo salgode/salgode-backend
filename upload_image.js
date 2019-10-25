@@ -1,5 +1,8 @@
 const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
+const moment = require('moment');
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const s3 = new aws.S3({
   apiVersion: '2008-10-17',
@@ -8,7 +11,7 @@ const s3 = new aws.S3({
 });
 const S3_BUCKET = process.env.s3_bucket;
 
-async function getSignedUrl(s3Params, folderName, fileName) {
+async function getSignedUrl(s3Params) {
   return new Promise((resolve, reject) => {
     s3.getSignedUrl('putObject', s3Params, (err, url) => {
       if (err) {
@@ -20,9 +23,24 @@ async function getSignedUrl(s3Params, folderName, fileName) {
   });
 }
 
-//todo get image id
 async function getImageId(folderName, fileName) {
-  return 'img_12345';
+  const imageId = `img_${uuidv4()}`;
+  const createAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const params = {
+    TableName: process.env.dynamodb_table_name,
+    Item: {
+      image_id: imageId,
+      folder_name: folderName,
+      file_name: fileName,
+      created_at: createAt
+    }
+  };
+  try {
+    await dynamoDB.put(params).promise();
+    return imageId;
+  } catch (e) {
+    return e;
+  }
 }
 
 exports.handler = async (event) => {
@@ -31,7 +49,7 @@ exports.handler = async (event) => {
   const folderName = uuidv4();
 
   const s3Params = {
-    Bucket: `${S3_BUCKET}/${folder}`,
+    Bucket: `${S3_BUCKET}/${folderName}`,
     Key: fileName,
     Expires: 1000,
     ContentType: fileType,
@@ -43,7 +61,7 @@ exports.handler = async (event) => {
     image_id: await getImageId(folderName, fileName),
     image_urls: {
       upload: await getSignedUrl(s3Params, folderName, fileName),
-      fetch: 'https://static.salgode.com/'+folderName+'/'+fileName
+      fetch: `https://static.salgode.com/${folderName}/${fileName}`
     }
   };
 
