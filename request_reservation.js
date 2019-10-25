@@ -40,6 +40,8 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
                 },
                 reserved_seats: reservedSeats,
                 reservation_status: reservationStatus,
+                check_in: false,
+                check_out: false,
                 created_at: timestamp,
                 updated_at: timestamp
               }
