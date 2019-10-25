@@ -31,9 +31,10 @@ async function acceptReservation(reservedSeats, reservationId, tripId) {
               Key: {
                 reservation_id: reservationId
               },
-              UpdateExpression: 'set reservation_status = :new_status',
+              UpdateExpression: 'set reservation_status = :new_status, updated_at = :now',
               ExpressionAttributeValues: {
-                ':new_status': updatedStatus
+                ':new_status': updatedStatus,
+                ':now': timestamp
               }
             }
           },

@@ -1,18 +1,21 @@
 const aws = require('aws-sdk');
+const moment = require('moment');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function declineReservation(reservationId) {
   const updatedStatus = 'declined';
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
     const params = {
       TableName: process.env.dynamodb_table_name,
       Key: {
         reservation_id: reservationId
       },
-      UpdateExpression: 'set reservation_status = :new_status',
+      UpdateExpression: 'set reservation_status = :new_status, updated_at = :now',
       ExpressionAttributeValues: {
-        ':new_status': updatedStatus
+        ':new_status': updatedStatus,
+        ':now': timestamp
       }
     };
     await dynamoDB.update(params).promise();
