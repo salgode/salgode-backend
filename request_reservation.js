@@ -65,10 +65,16 @@ exports.handler = async (event) => {
   const result = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
   if (result) {
+    const responseBody = {
+      action: 'create',
+      success: true,
+      resource: 'reservation',
+      resource_id: result.reservation_id
+    };
     return {
       statusCode: 201,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(result)
+      body: JSON.stringify(responseBody)
     };
   }
   return {
