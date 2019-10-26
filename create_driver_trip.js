@@ -7,7 +7,7 @@ const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function createTrip(driverId, vehicleId, availableSeats, tripTimes, routePoints) {
+async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoints) {
   const tripId = `tri_${uuidv4()}`;
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const params = {
@@ -16,7 +16,7 @@ async function createTrip(driverId, vehicleId, availableSeats, tripTimes, routeP
       trip_id: tripId,
       driver_id: driverId,
       vehicle_id: vehicleId,
-      trip_times: tripTimes,
+      trip_times: etdInfo,
       available_seats: availableSeats,
       route_points: routePoints,
       trip_status: 'open',
@@ -25,23 +25,31 @@ async function createTrip(driverId, vehicleId, availableSeats, tripTimes, routeP
       updated_at: timestamp
     }
   };
-  const data = await dynamoDB.put(params).promise();
-  return data;
+  await dynamoDB.put(params).promise();
+  return [tripId, timestamp];
 }
 
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const body = JSON.parse(event.body);
-  const tripTimes = body.trip_times;
+  const etdInfo = body.etd_info;
   const routePoints = body.route_points;
   const vehicleId = body.vehicle_id;
   const availableSeats = body.available_seats;
 
-  await createTrip(userId, vehicleId, availableSeats, tripTimes, routePoints);
+  const [tripId, timestamp] = await createTrip(
+    userId, vehicleId, availableSeats, etdInfo, routePoints
+  );
 
   return {
     statusCode: 201,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ created: true })
+    body: JSON.stringify({
+      action: 'create',
+      success: true,
+      resource: 'trip',
+      resource_id: tripId,
+      performed_at: timestamp
+    })
   };
 };
