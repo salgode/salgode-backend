@@ -3,6 +3,11 @@ const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 const bcrypt = require('bcryptjs');
 
+const UsersTableName = process.env.dynamodb_users_table_name;
+const UsersIndexName = process.env.dynamodb_users_index_name;
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function hashPassword(userPassword) {
@@ -12,8 +17,8 @@ function hashPassword(userPassword) {
 
 async function checkEmail(userEmail) {
   const params = {
-    TableName: process.env.dynamodb_table_name,
-    IndexName: process.env.dynamodb_index_name,
+    TableName: UsersTableName,
+    IndexName: UsersIndexName,
     ProjectionExpression: 'user_id, email',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
@@ -22,6 +27,25 @@ async function checkEmail(userEmail) {
   };
   const data = await dynamoDB.query(params).promise();
   return data.Count;
+}
+
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  console.log('imageId', imageId);
+  const data = await dynamoDB.get(params).promise();
+  console.log('data', data);
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
 async function createUser(
@@ -36,7 +60,7 @@ async function createUser(
   createdAt
 ) {
   const params = {
-    TableName: process.env.dynamodb_table_name,
+    TableName: UsersTableName,
     Item: {
       user_id: userId,
       email: userEmail,
@@ -46,12 +70,15 @@ async function createUser(
       last_name: lastName,
       phone: userPhone,
       user_identifications: {
-        identification_image_front:
-          identificationImages.identification_image_front,
-        identification_image_back:
-          identificationImages.identification_image_back,
         selfie_image: identificationImages.selfie_image,
-        driver_license: identificationImages.driver_license
+        identification: {
+          front: identificationImages.identification_image_front,
+          back: identificationImages.identification_image_back
+        },
+        driver_license: {
+          front: identificationImages.driver_license_image_front,
+          back: identificationImages.driver_license_image_back
+        }
       },
       vehicles: [],
       created_at: createdAt,
@@ -98,21 +125,50 @@ exports.handler = async (event) => {
     identificationImages,
     createdAt
   );
+  const selfieUrl = identificationImages.selfie_image
+    ? await getImageUrl(identificationImages.selfie_image)
+    : null;
+  const identFrontUrl = identificationImages.identification_image_front
+    ? await getImageUrl(identificationImages.identification_image_front)
+    : null;
+  const identBackUrl = identificationImages.identification_image_back
+    ? await getImageUrl(identificationImages.identification_image_back)
+    : null;
+  const driverFrontUrl = identificationImages.driver_license_image_front
+    ? await getImageUrl(identificationImages.driver_license_image_front)
+    : null;
+  const driverBackUrl = identificationImages.driver_license_image_back
+    ? await getImageUrl(identificationImages.driver_license_image_back)
+    : null;
   const responseBody = {
     created: true,
-    user_id: userId,
-    email: userEmail,
     bearer_token: bearerToken,
+    user_id: userId,
     first_name: firstName,
     last_name: lastName,
+    email: userEmail,
     phone: userPhone,
-    avatar: identificationImages.selfie_image,
+    avatar: selfieUrl,
+    user_verifications: {
+      phone: !!userPhone,
+      identity:
+        !!identificationImages.selfie_image
+        && !!identificationImages.identification_image_front
+        && !!identificationImages.identification_image_back,
+      driver_license:
+        !!identificationImages.driver_license_image_front
+        && !!identificationImages.driver_license_image_back
+    },
     user_identifications: {
-      identification_image_front:
-            identificationImages.identification_image_front,
-      identification_image_back:
-            identificationImages.identification_image_back,
-      selfie: identificationImages.selfie_image
+      selfie: selfieUrl,
+      identification: {
+        front: identFrontUrl,
+        back: identBackUrl
+      },
+      driver_license: {
+        front: driverFrontUrl,
+        back: driverBackUrl
+      }
     }
   };
   return {
