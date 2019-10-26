@@ -20,6 +20,7 @@ async function createTrip(driverId, vehicleId, availableSeats, tripTimes, routeP
       available_seats: availableSeats,
       route_points: routePoints,
       trip_status: 'open',
+      current_point: -1,
       created_at: timestamp,
       updated_at: timestamp
     }
