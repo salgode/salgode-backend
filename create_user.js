@@ -99,21 +99,20 @@ exports.handler = async (event) => {
     createdAt
   );
   const responseBody = {
-    message: 'User has been created',
-    user: {
-      user_id: userId,
-      email: userEmail,
-      bearer_token: bearerToken,
-      first_name: firstName,
-      last_name: lastName,
-      phone: userPhone,
-      user_identifications: {
-        identification_image_front:
+    created: true,
+    user_id: userId,
+    email: userEmail,
+    bearer_token: bearerToken,
+    first_name: firstName,
+    last_name: lastName,
+    phone: userPhone,
+    avatar: identificationImages.selfie_image,
+    user_identifications: {
+      identification_image_front:
             identificationImages.identification_image_front,
-        identification_image_back:
+      identification_image_back:
             identificationImages.identification_image_back,
-        selfie_image: identificationImages.selfie_image
-      }
+      selfie: identificationImages.selfie_image
     }
   };
   return {
