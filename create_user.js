@@ -53,6 +53,7 @@ async function createUser(
         selfie_image: identificationImages.selfie_image,
         driver_license: identificationImages.driver_license
       },
+      vehicles: [],
       created_at: createdAt,
       updated_at: createdAt
     }
