@@ -24,7 +24,7 @@ async function forwardTrip(tripId, userId) {
       ':self': userId,
       ':expectedStatus': expectedStatus
     },
-    ReturnValues: 'UPDATED_NEW'
+    ReturnValues: 'ALL_NEW'
   };
   const data = await dynamoDB.update(params).promise();
   return data.Attributes;
@@ -34,12 +34,15 @@ exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const tripId = event.pathParameters.trip;
 
-  await forwardTrip(tripId, userId);
+  const result = await forwardTrip(tripId, userId);
   const responseBody = {
     action: 'forward',
     success: true,
     resource: 'trip',
-    resource_id: tripId
+    resource_id: tripId,
+    next_point: result.current_point + 1 < result.route_points.length
+      ? result.route_points[result.current_point + 1]
+      : null
   };
   return {
     statusCode: 200,
