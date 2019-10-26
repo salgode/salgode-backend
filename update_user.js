@@ -95,7 +95,9 @@ exports.handler = async (event) => {
   }
   await updateUser(userId, body);
 
-  const message = { updated: true };
+  const message = {
+    action: 'updated', success: true, resource: 'user', resource_id: userId
+  };
   const result = {
     body: JSON.stringify(message)
   };
