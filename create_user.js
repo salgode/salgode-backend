@@ -41,9 +41,7 @@ async function getImageUrl(imageId) {
     },
     ProjectionExpression: 'file_name, folder_name'
   };
-  console.log('imageId', imageId);
   const data = await dynamoDB.get(params).promise();
-  console.log('data', data);
   const image = data.Item;
   return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
