@@ -34,10 +34,16 @@ exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const tripId = event.pathParameters.trip;
 
-  const result = await forwardTrip(tripId, userId);
+  await forwardTrip(tripId, userId);
+  const responseBody = {
+    action: 'forward',
+    success: true,
+    resource: 'trip',
+    resource_id: tripId
+  };
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(result)
+    body: JSON.stringify(responseBody)
   };
 };
