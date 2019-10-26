@@ -1,26 +1,32 @@
-const { parallelScan } = require('@shelf/dynamodb-parallel-scan');
+const aws = require('aws-sdk');
 
-async function getSpots() {
+const dynamoDB = new aws.DynamoDB.DocumentClient();
+
+async function getPlaces() {
   const params = {
-    TableName: process.env.dynamodb_table_name,
-    ProjectionExpression: '#id, #name, #address, #city',
+    TableName: process.env.dynamodb_places_table_name,
+    ProjectionExpression: '#place_id, #name, #address, #commune, #city, #type, #lat, #lon',
     ExpressionAttributeNames: {
-      '#id': 'id',
+      '#place_id': 'place_id',
       '#name': 'name',
       '#address': 'address',
-      '#city': 'city'
+      '#commune': 'commune',
+      '#city': 'city',
+      '#type': 'type',
+      '#lat': 'lat',
+      '#lon': 'lon'
     }
   };
-  const data = await parallelScan(params, { concurrency: 1000 });
-  return data;
+  const data = await dynamoDB.scan(params).promise();
+  return data.Items;
 }
 
-exports.handler = async (event) => {
-  const query = await getSpots();
+exports.handler = async (event) => { // eslint-disable-line no-unused-vars
+  const places = await getPlaces();
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(query)
+    body: JSON.stringify(places)
   };
   return response;
 };
