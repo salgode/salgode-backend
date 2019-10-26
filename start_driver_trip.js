@@ -38,10 +38,16 @@ exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const tripId = event.pathParameters.trip;
 
-  const result = await startTrip(tripId, userId);
+  await startTrip(tripId, userId);
+  const responseBody = {
+    action: 'start',
+    success: true,
+    resource: 'trip',
+    resource_id: tripId
+  };
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(result)
+    body: JSON.stringify(responseBody)
   };
 };
