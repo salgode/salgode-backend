@@ -30,10 +30,16 @@ exports.handler = async (event) => {
   const result = await declineReservation(reservationId);
 
   if (result) {
+    const responseBody = {
+      action: 'decline',
+      success: true,
+      resource: 'reservation',
+      resource_id: reservationId
+    };
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(result)
+      body: JSON.stringify(responseBody)
     };
   }
   return {
