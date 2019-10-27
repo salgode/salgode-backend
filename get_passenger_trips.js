@@ -158,7 +158,8 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const trips = await getTripsByIds(tripIds);
 
   const driverIds = trips.map((t) => t.driver_id);
-  const vehicleIds = trips.map((t) => t.vehicle_id);
+  const rawVehicleIds = trips.map((t) => t.vehicle_id);
+  const vehicleIds = rawVehicleIds.filter(repeated);
   const placesIdsArrays = trips.map((t) => t.route_points);
   const rawPlacesIds = placesIdsArrays.reduce((acc, cur) => [...acc, ...cur], []);
   const placesIds = rawPlacesIds.filter(repeated);
