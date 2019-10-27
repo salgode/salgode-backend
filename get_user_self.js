@@ -74,7 +74,7 @@ exports.handler = async (event) => {
     };
   }
   return {
-    statusCode: 503,
+    statusCode: 403,
     headers: { 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify({ message: 'Service Unavailable' })
   };
