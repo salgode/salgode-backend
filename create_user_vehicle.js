@@ -10,83 +10,75 @@ const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function createUserVehicle(userId, nick, seats, type, color, brand, model, vehicleIdentif) {
+async function createVehicle(nick, seats, type, color, brand, model, vehicleIdentif) {
   const vehicleId = `veh_${uuidv4()}`;
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  const newUserVehicle = {
-    vehicle_id: vehicleId,
-    nickname: nick
+  const params = {
+    TableName: VehiclesTableName,
+    Item: {
+      vehicle_id: vehicleId,
+      alias: nick,
+      vehicle_attributes: {
+        seats,
+        type,
+        color,
+        brand,
+        model
+      },
+      vehicle_identifications: vehicleIdentif,
+      created_at: timestamp,
+      updated_at: timestamp
+    }
   };
-  const newVehicle = {
-    vehicle_id: vehicleId,
-    seats,
-    type,
-    color,
-    brand,
-    model,
-    vehicle_identifications: {
-      type: vehicleIdentif.type,
-      identification: vehicleIdentif.identification,
-      country: vehicleIdentif.country,
-      verified: vehicleIdentif.verified
+  await dynamoDB.put(params).promise();
+  return [vehicleId, timestamp];
+}
+
+async function updateUserVehicle(userId, vehicleId) {
+  const params = {
+    TableName: UsersTableName,
+    Key: {
+      user_id: userId
     },
-    created_at: timestamp,
-    updated_at: timestamp
+    UpdateExpression: 'SET vehicles = list_append(vehicles, :vehicle)',
+    ExpressionAttributeValues: {
+      ':vehicle': [vehicleId]
+    },
+    ReturnValues: 'NONE'
   };
-  try {
-    await dynamoDB
-      .transactWrite({
-        TransactItems: [
-          {
-            Update: {
-              TableName: UsersTableName,
-              Key: {
-                user_id: userId
-              },
-              UpdateExpression: 'set vehicles = list_append(vehicles, :newUserVehicle), updated_at = :now',
-              ExpressionAttributeValues: {
-                ':newUserVehicle': [newUserVehicle],
-                ':now': timestamp
-              }
-            }
-          },
-          {
-            Put: {
-              TableName: VehiclesTableName,
-              Item: {
-                ...newVehicle
-              }
-            }
-          }
-        ]
-      })
-      .promise();
-    return newVehicle;
-  } catch (e) {
-    return false;
-  }
+  const data = await dynamoDB.update(params).promise();
+  return data;
 }
 
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const body = JSON.parse(event.body);
   const nick = body.nickname;
-  const vehicleIdentif = body.vehicle_identifications;
+  const vehicleIdentif = body.vehicle_identification;
   const {
     seats, type, color, brand, model
   } = body;
 
-
-  const result = await createUserVehicle(
-    userId, nick, seats, type, color, brand, model, vehicleIdentif
+  const [vehicleId, timestamp] = await createVehicle(
+    nick, seats, type, color, brand, model, vehicleIdentif
   );
 
-  if (result) {
-    return {
-      statusCode: 201,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ created: true })
-    };
+  if (vehicleId) {
+    const result = await updateUserVehicle(userId, vehicleId);
+    if (result) {
+      return {
+        statusCode: 201,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify(
+          {
+            action: 'created',
+            success: true,
+            resource: 'vehicle',
+            resource_id: vehicleId
+          }
+        )
+      };
+    }
   }
   return {
     statusCode: 400,
