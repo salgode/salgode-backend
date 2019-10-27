@@ -3,24 +3,21 @@ const aws = require('aws-sdk');
 // eslint-disable-next-line import/no-absolute-path
 const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
-const dynamoDB = new aws.DynamoDB.DocumentClient();
-const UserTableName = process.env.dynamodb_users_table_name;
+const UsersTableName = process.env.dynamodb_users_table_name;
 const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
-async function getUserVehicle(userId, vehicleId) {
+const dynamoDB = new aws.DynamoDB.DocumentClient();
+
+async function getUser(userId) {
   const params = {
-    TableName: UserTableName,
+    TableName: UsersTableName,
     Key: {
       user_id: userId
     },
     ProjectionExpression: 'vehicles'
   };
   const data = await dynamoDB.get(params).promise();
-  if (data && data.Item && data.Item.vehicles) {
-    const filteredVehicleArray = data.Item.vehicles.filter((v) => v.vehicle_id === vehicleId);
-    return filteredVehicleArray.length > 0 ? filteredVehicleArray[0] : null;
-  }
-  return null;
+  return data.Item;
 }
 
 async function getVehicle(vehicleId) {
@@ -28,7 +25,9 @@ async function getVehicle(vehicleId) {
     TableName: VehiclesTableName,
     Key: {
       vehicle_id: vehicleId
-    }
+    },
+    ProjectionExpression:
+      'vehicle_id, vehicle_attributes, vehicle_identifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -36,25 +35,21 @@ async function getVehicle(vehicleId) {
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  console.log({ userId });
   const vehicleId = event.pathParameters.vehicle;
-  const userVehicle = await getUserVehicle(userId, vehicleId);
+  console.log({ vehicleId });
 
-  if (userVehicle) {
-    const theVehicle = await getVehicle(vehicleId);
-    const responseBody = {
-      vehicle_id: theVehicle.vehicle_id,
-      nickname: userVehicle.nickname,
-      seats: theVehicle.seats,
-      type: theVehicle.type,
-      color: theVehicle.color,
-      brand: theVehicle.brand,
-      model: theVehicle.model,
-      vehicle_identifications: theVehicle.vehicle_identifications
-    };
+  const user = await getUser(userId);
+  console.log({ user });
+  const vehicleInUser = user.vehicles.filter((vId) => vId === vehicleId);
+  console.log({ vehicleInUser });
+  if (vehicleInUser) {
+    const vehicle = await getVehicle(vehicleId);
+    console.log({ vehicle });
     const response = {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
+      body: JSON.stringify(vehicle)
     };
     return response;
   }
