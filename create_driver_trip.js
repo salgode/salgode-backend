@@ -16,7 +16,7 @@ async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoi
       trip_id: tripId,
       driver_id: driverId,
       vehicle_id: vehicleId,
-      trip_times: etdInfo,
+      etd_info: etdInfo,
       available_seats: availableSeats,
       route_points: routePoints,
       trip_status: 'open',
