@@ -1,26 +1,46 @@
 const aws = require('aws-sdk');
 const bcrypt = require('bcryptjs');
+const moment = require('moment');
+const uuidv4 = require('uuid/v4');
+
+// eslint-disable-next-line import/no-absolute-path
+const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const moment = require('moment');
-
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const updateableAttrs = [
   'first_name',
   'last_name',
   'phone',
-  'car',
   'user_identifications',
   'password_hash'
 ];
 
 const UserTableName = process.env.dynamodb_users_table_name;
+const EventsTableName = process.env.dynamodb_events_table_name;
 
-function parseUpdateParams(body, updateableAttrs, updatedAt) {
+async function createEvent(userId, resourceId, resource, action, data) {
+  const eventId = `evt_${uuidv4()}`;
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const params = {
+    TableName: EventsTableName,
+    Item: {
+      event_id: eventId,
+      user_id: userId,
+      resource_id: resourceId,
+      resource,
+      action,
+      event_data: data,
+      created_at: timestamp
+    }
+  };
+  await dynamoDB.put(params).promise();
+}
+
+function parseUpdateParams(body, updatedAt) {
   let expression = 'SET ';
   const values = {};
-  for (let i = 0; i < updateableAttrs.length; i++) {
+  for (let i = 0; i < updateableAttrs.length; i += 1) {
     if (body[updateableAttrs[i]]) {
       expression += `${updateableAttrs[i]} = :${updateableAttrs[i]}, `;
       values[`:${updateableAttrs[i]}`] = body[updateableAttrs[i]];
@@ -62,7 +82,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, password_hash'
+    ProjectionExpression: 'user_id, user_identifications, password_hash'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -76,8 +96,8 @@ function hashPassword(userPassword) {
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const body = JSON.parse(event.body);
+  const userFromLogin = await getUser(userId);
   if (body.current_password && body.new_password) {
-    const userFromLogin = await getUser(userId);
     const hashedPassword = userFromLogin.password_hash;
     if (bcrypt.compareSync(body.current_password, hashedPassword)) {
       body.password_hash = hashPassword(body.new_password);
@@ -93,7 +113,15 @@ exports.handler = async (event) => {
       };
     }
   }
-  await updateUser(userId, body);
+  const updateParams = {
+    user_identifications: {
+      ...userFromLogin.user_identifications,
+      ...body.user_identifications
+    }
+  };
+  await updateUser(userId, updateParams);
+  if (body.new_password) { delete body.new_password; }
+  await createEvent(userId, userId, 'user', 'update', body);
 
   const message = {
     action: 'updated', success: true, resource: 'user', resource_id: userId
