@@ -5,10 +5,11 @@ const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-const TripsTableName = process.env.dynamodb_trips_table_name;
-const TripsIndexName = process.env.dynamodb_trips_index_name;
+const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+const TripsTableName = process.env.dynamodb_trips_table_name;
+const TripsIndexName = process.env.dynamodb_trips_index_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
 const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
@@ -27,12 +28,24 @@ function checkOnBoard(routeStart, currentPoint, tripRoute) {
   return false;
 }
 
+async function getPlace(placeId) {
+  const params = {
+    TableName: PlacesTableName,
+    Key: {
+      place_id: placeId
+    },
+    ProjectionExpression: 'place_id, place_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
+}
+
 async function getTripsByDriver(userId) {
   const params = {
     TableName: TripsTableName,
     IndexName: TripsIndexName,
     ProjectionExpression:
-      'trip_id, trip_status, trip_times, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
+      'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
     KeyConditionExpression: 'driver_id = :driver_id',
     FilterConditionExpression: 'trip_status = in_progress',
     ExpressionAttributeValues: {
@@ -103,13 +116,8 @@ async function getVehicle(vehicleId) {
     Key: {
       vehicle_id: vehicleId
     },
-    ProjectionExpression: '#vehicle_id, #type, #color, #identification',
-    ExpressionAttributeNames: {
-      '#vehicle_id': 'vehicle_id',
-      '#type': 'type',
-      '#color': 'color',
-      '#identification': 'identification'
-    }
+    ProjectionExpression:
+      'vehicle_id, vehicle_attributes, vehicle_identifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -117,6 +125,7 @@ async function getVehicle(vehicleId) {
 
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+
   let trips = await getTripsByDriver(userId);
   let reservations;
 
@@ -135,6 +144,7 @@ exports.handler = async (event) => {
     const theReservation = reservations
       ? reservations.filter((r) => r.trip_id === theTrip.trip_id)[0]
       : null;
+
     const isSelfDriver = userId === theTrip.driver_id;
     const routePoints = theTrip.route_points;
     const routeStart = theReservation
@@ -148,8 +158,13 @@ exports.handler = async (event) => {
       || (theReservation
         ? checkOnBoard(routeStart, theTrip.current_point, routePoints)
         : null);
+
+    const firstPlace = await getPlace(routeStart);
+    const lastPlace = await getPlace(routeEnd);
+    const routePlaces = await Promise.all(routePoints.map((rp) => getPlace(rp)));
+
     const responseBody = {
-      on_board: onBoard,
+      on_board: !!onBoard,
       trip_id: theTrip.trip_id,
       trip_status: theTrip.trip_status,
       current_point: routePoints[theTrip.current_point],
@@ -164,16 +179,16 @@ exports.handler = async (event) => {
       },
       vehicle: {
         vehicle_id: theVehicle.vehicle_id,
-        vehicle_type: theVehicle.type,
-        vehicle_color: theVehicle.color,
-        vehicle_identification: theVehicle.identification
+        vehicle_type: theVehicle.vehicle_attributes.type,
+        vehicle_color: theVehicle.vehicle_attributes.color,
+        vehicle_identification: theVehicle.vehicle_identifications.identification
       },
       route: {
-        start: routeStart,
-        end: routeEnd
+        start: firstPlace,
+        end: lastPlace
       },
-      trip_times: theTrip.trip_times,
-      trip_route: routePoints
+      etd_info: theTrip.etd_info,
+      trip_route: routePlaces
     };
     const response = {
       statusCode: 200,
