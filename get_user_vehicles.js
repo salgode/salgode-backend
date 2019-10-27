@@ -3,10 +3,10 @@ const aws = require('aws-sdk');
 // eslint-disable-next-line import/no-absolute-path
 const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
+const UsersTableName = process.env.dynamodb_users_table_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const UserTableName = process.env.dynamodb_user_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicle_table_name;
 
 function mapVehicleKeys(vehicleIds) {
   return vehicleIds.map((vehicleId) => ({
@@ -16,7 +16,7 @@ function mapVehicleKeys(vehicleIds) {
 
 async function getUser(userId) {
   const params = {
-    TableName: UserTableName,
+    TableName: UsersTableName,
     Key: {
       user_id: userId
     },
@@ -26,16 +26,13 @@ async function getUser(userId) {
   return data.Item;
 }
 
-async function getVehicleByVehicleIds(vehiclesIds) {
+async function getVehicleByIds(vehiclesIds) {
   const params = {
     RequestItems: {
       [VehiclesTableName]: {
         Keys: mapVehicleKeys(vehiclesIds),
-        AttributesToGet: [
-          'color',
-          'identification',
-          'type'
-        ],
+        ProjectionExpression:
+          'vehicle_id, alias, vehicle_attributes, vehicle_identifications',
         ConsistentRead: false
       }
     },
@@ -48,24 +45,24 @@ async function getVehicleByVehicleIds(vehiclesIds) {
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
   const user = await getUser(userId);
-  const vehiclesIds = user.vehicles.map((vehicle) => vehicle.vehicle_id);
-  let responseBody = [];
-  if (vehiclesIds.length !== 0) {
-    const vehiclesInformation = await getVehicleByVehicleIds(vehiclesIds);
-    const vehicles = user.vehicles.map((vehicle, idx) => ({
-      nickname: vehicle.nickname,
-      seats: vehicle.seats,
-      type: vehicle.type,
-      vehicle_id: vehicle.vehicle_id,
-      vehicle_information: vehiclesInformation[idx]
-    }));
-    responseBody = { vehicles };
-  }
 
+  const vehiclesRaw = await getVehicleByIds(user.vehicles);
+  const vehicles = vehiclesRaw.map((v) => ({
+    vehicle_id: v.vehicle_id,
+    alias: v.alias,
+    nickname: v.alias,
+    nickname_deprecation: 'Use alias instead',
+    type: v.vehicle_attributes.type,
+    type_deprecation: 'Use vehicle_attributes.type instead',
+    seats: v.vehicle_attributes.seats,
+    seats_deprecation: 'Use vehicle_attributes.seats instead',
+    vehicle_attributes: v.vehicle_attributes,
+    vehicle_identifications: v.vehicle_identifications
+  }));
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+    body: JSON.stringify({ vehicles })
   };
   return response;
 };
