@@ -105,10 +105,18 @@ function mergeItems(trips, driverSelf, vehicles, places) {
     );
     currentPoint = places.find((p) => trips[i].current_point === p.place_id);
     parsedTrips.push({
-      ...trips[i],
+      trip_id: trips[i].trip_id,
+      trip_status: trips[i].trip_status,
+      etd_info: trips[i].etd_info,
+      available_seats: trips[i].available_seats,
       vehicle,
       current_place: currentPoint,
-      driver: driverSelf,
+      driver: {
+        driver_id: driverSelf.user_id,
+        driver_name: driverSelf.first_name,
+        driver_phone: driverSelf.phone,
+        driver_avatar: driverSelf.user_identifications.selfie_image
+      },
       trip_route_points: routePlace,
       trip_route: {
         start: startPlace,
@@ -133,6 +141,7 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const vehicles = await getVehicles(vehicleIds);
   const places = await getPlaces(placesIds);
 
+  console.log(driverSelf);
   const mergedItems = mergeItems(trips, driverSelf, vehicles, places);
 
   const response = {
