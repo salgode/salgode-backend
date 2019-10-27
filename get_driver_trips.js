@@ -53,7 +53,7 @@ async function getVehicles(vehicleIds) {
       [VehiclesTableName]: {
         Keys: mapIdKeys(vehicleIds, 'vehicle_id'),
         ProjectionExpression:
-          'vehicle_id, vehicle_attributes, vehicle_identification',
+          'vehicle_id, vehicle_attributes, vehicle_identifications',
         ConsistentRead: false
       }
     },
@@ -131,7 +131,8 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
 
   const trips = await getTripAsDriver(userId);
-  const vehicleIds = trips.map((t) => t.vehicle_id);
+  const rawVehicleIds = trips.map((t) => t.vehicle_id);
+  const vehicleIds = rawVehicleIds.filter(repeated);
   const placesIdsArrays = trips.map((t) => t.route_points);
   const rawPlacesIds = placesIdsArrays.reduce((acc, cur) => [...acc, ...cur], []);
   const placesIds = rawPlacesIds.filter(repeated);
@@ -141,7 +142,6 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const vehicles = await getVehicles(vehicleIds);
   const places = await getPlaces(placesIds);
 
-  console.log(driverSelf);
   const mergedItems = mergeItems(trips, driverSelf, vehicles, places);
 
   const response = {
