@@ -1,26 +1,49 @@
 const aws = require('aws-sdk');
-const dynamoDB = new aws.DynamoDB.DocumentClient();
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 const bcrypt = require('bcryptjs');
 
+const UsersTableName = process.env.dynamodb_users_table_name;
+const UsersIndexName = process.env.dynamodb_users_index_name;
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
+
 function hashPassword(userPassword) {
-  let Salt = bcrypt.genSaltSync(15);
+  const Salt = bcrypt.genSaltSync(15);
   return bcrypt.hashSync(userPassword, Salt);
 }
 
 async function checkEmail(userEmail) {
-  let params = {
-    TableName: process.env.dynamodb_table_name,
-    IndexName: process.env.dynamodb_index_name,
+  const params = {
+    TableName: UsersTableName,
+    IndexName: UsersIndexName,
     ProjectionExpression: 'user_id, email',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
       ':email': userEmail
     }
   };
-  let data = await dynamoDB.query(params).promise();
+  const data = await dynamoDB.query(params).promise();
   return data.Count;
+}
+
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
 async function createUser(
@@ -34,8 +57,8 @@ async function createUser(
   identificationImages,
   createdAt
 ) {
-  let params = {
-    TableName: process.env.dynamodb_table_name,
+  const params = {
+    TableName: UsersTableName,
     Item: {
       user_id: userId,
       email: userEmail,
@@ -45,33 +68,38 @@ async function createUser(
       last_name: lastName,
       phone: userPhone,
       user_identifications: {
-        identification_image_front:
-          identificationImages.identification_image_front,
-        identification_image_back:
-          identificationImages.identification_image_back,
-        selfie_image: identificationImages.selfie_image
+        selfie_image: identificationImages.selfie_image,
+        identification: {
+          front: identificationImages.identification_image_front,
+          back: identificationImages.identification_image_back
+        },
+        driver_license: {
+          front: identificationImages.driver_license_image_front,
+          back: identificationImages.driver_license_image_back
+        }
       },
+      vehicles: [],
       created_at: createdAt,
       updated_at: createdAt
     }
   };
-  let data = await dynamoDB.put(params).promise();
+  const data = await dynamoDB.put(params).promise();
   return data;
 }
 
-exports.handler = async event => {
-  let body = JSON.parse(event.body);
-  let userEmail = body.email;
-  let userPassword = body.password;
-  let firstName = body.first_name;
-  let lastName = body.last_name;
-  let userPhone = body.phone;
-  let identificationImages = body.user_identifications;
+exports.handler = async (event) => {
+  const body = JSON.parse(event.body);
+  const userEmail = body.email;
+  const userPassword = body.password;
+  const firstName = body.first_name;
+  const lastName = body.last_name;
+  const userPhone = body.phone;
+  const identificationImages = body.user_identifications;
 
-  let emailIsUsed = await checkEmail(userEmail);
+  const emailIsUsed = await checkEmail(userEmail);
 
-  if (emailIsUsed > 0) {
-    let responseBody = {
+  if (emailIsUsed) {
+    const responseBody = {
       message: 'Email has already been used'
     };
     return {
@@ -79,46 +107,71 @@ exports.handler = async event => {
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify(responseBody)
     };
-  } else {
-    let userId = 'usr_' + uuidv4();
-    let bearerToken = uuidv4();
-    let createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-    let passwordHash = hashPassword(userPassword);
-    await createUser(
-      userId,
-      bearerToken,
-      userEmail,
-      passwordHash,
-      firstName,
-      lastName,
-      userPhone,
-      identificationImages,
-      createdAt
-    );
-    let responseBody = {
-      message: 'User has been created',
-      user: {
-        user_id: userId,
-        email: userEmail,
-        bearer_token: bearerToken,
-        first_name: firstName,
-        last_name: lastName,
-        phone: userPhone,
-        user_identifications: {
-          identification_image_front:
-            identificationImages.identification_image_front,
-          identification_image_back:
-            identificationImages.identification_image_back,
-          selfie_image: identificationImages.selfie_image
-        },
-        created_at: createdAt,
-        updated_at: createdAt
-      }
-    };
-    return {
-      statusCode: 201,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
-    };
   }
+  const userId = `usr_${uuidv4()}`;
+  const bearerToken = uuidv4();
+  const createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const passwordHash = hashPassword(userPassword);
+  await createUser(
+    userId,
+    bearerToken,
+    userEmail,
+    passwordHash,
+    firstName,
+    lastName,
+    userPhone,
+    identificationImages,
+    createdAt
+  );
+  const selfieUrl = identificationImages.selfie_image
+    ? await getImageUrl(identificationImages.selfie_image)
+    : null;
+  const identFrontUrl = identificationImages.identification_image_front
+    ? await getImageUrl(identificationImages.identification_image_front)
+    : null;
+  const identBackUrl = identificationImages.identification_image_back
+    ? await getImageUrl(identificationImages.identification_image_back)
+    : null;
+  const driverFrontUrl = identificationImages.driver_license_image_front
+    ? await getImageUrl(identificationImages.driver_license_image_front)
+    : null;
+  const driverBackUrl = identificationImages.driver_license_image_back
+    ? await getImageUrl(identificationImages.driver_license_image_back)
+    : null;
+  const responseBody = {
+    created: true,
+    bearer_token: bearerToken,
+    user_id: userId,
+    first_name: firstName,
+    last_name: lastName,
+    email: userEmail,
+    phone: userPhone,
+    avatar: selfieUrl,
+    user_verifications: {
+      phone: !!userPhone,
+      identity:
+        !!identificationImages.selfie_image
+        && !!identificationImages.identification_image_front
+        && !!identificationImages.identification_image_back,
+      driver_license:
+        !!identificationImages.driver_license_image_front
+        && !!identificationImages.driver_license_image_back
+    },
+    user_identifications: {
+      selfie: selfieUrl,
+      identification: {
+        front: identFrontUrl,
+        back: identBackUrl
+      },
+      driver_license: {
+        front: driverFrontUrl,
+        back: driverBackUrl
+      }
+    }
+  };
+  return {
+    statusCode: 201,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify(responseBody)
+  };
 };

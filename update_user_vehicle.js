@@ -1,23 +1,20 @@
 const aws = require('aws-sdk');
-const bcrypt = require('bcryptjs');
-const moment = require('moment');
 const uuidv4 = require('uuid/v4');
+const moment = require('moment');
 
 // eslint-disable-next-line import/no-absolute-path
 const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
 
+const EventsTableName = process.env.dynamodb_events_table_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const updateableAttrs = [
-  'first_name',
-  'last_name',
-  'phone',
-  'user_identifications',
-  'password_hash'
+  'alias',
+  'vehicle_attributes',
+  'vehicle_identifications'
 ];
-
-const UserTableName = process.env.dynamodb_users_table_name;
-const EventsTableName = process.env.dynamodb_events_table_name;
 
 async function createEvent(userId, resourceId, resource, action, data) {
   const eventId = `evt_${uuidv4()}`;
@@ -55,18 +52,17 @@ function parseUpdateParams(body, updatedAt) {
   return [expression, values];
 }
 
-async function updateUser(userId, body) {
+async function updateUserVehicle(vehicleId, body) {
   const updatedAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const [updateExpression, expressionAttributeValues] = parseUpdateParams(
     body,
-    updateableAttrs,
     updatedAt
   );
 
   const params = {
-    TableName: UserTableName,
+    TableName: VehiclesTableName,
     Key: {
-      user_id: userId
+      vehicle_id: vehicleId
     },
     UpdateExpression: updateExpression,
     ExpressionAttributeValues: expressionAttributeValues,
@@ -76,55 +72,43 @@ async function updateUser(userId, body) {
   return data;
 }
 
-async function getUser(userId) {
+async function getVehicle(vehicleId) {
   const params = {
-    TableName: UserTableName,
+    TableName: VehiclesTableName,
     Key: {
-      user_id: userId
+      vehicle_id: vehicleId
     },
-    ProjectionExpression: 'user_id, user_identifications, password_hash'
+    ProjectionExpression:
+      'vehicle_id, alias, vehicle_attributes, vehicle_identifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
 }
 
-function hashPassword(userPassword) {
-  const Salt = bcrypt.genSaltSync(15);
-  return bcrypt.hashSync(userPassword, Salt);
-}
-
 exports.handler = async (event) => {
   const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
-  const body = JSON.parse(event.body);
-  const userFromLogin = await getUser(userId);
-  if (body.current_password && body.new_password) {
-    const hashedPassword = userFromLogin.password_hash;
-    if (bcrypt.compareSync(body.current_password, hashedPassword)) {
-      body.password_hash = hashPassword(body.new_password);
-      delete body.new_password;
-      delete body.current_password;
-    } else {
-      return {
-        statusCode: 401,
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify(({
-          message: 'Unauthorized'
-        }))
-      };
-    }
-  }
-  const updateParams = {
-    user_identifications: {
-      ...userFromLogin.user_identifications,
-      ...body.user_identifications
+
+  const vehicleId = event.pathParameters.vehicle;
+  let body = JSON.parse(event.body);
+
+  const vehicle = await getVehicle(vehicleId);
+  body = {
+    alias: body.alias || vehicle.alias,
+    vehicle_attributes: {
+      ...vehicle.vehicle_attributes, ...body.vehicle_attributes
+    },
+    vehicle_identifications: {
+      ...vehicle.vehicle_identifications, ...body.vehicle_identifications
     }
   };
-  await updateUser(userId, updateParams);
-  if (body.new_password) { delete body.new_password; }
-  await createEvent(userId, userId, 'user', 'update', body);
+  await updateUserVehicle(vehicleId, body);
+  await createEvent(userId, vehicleId, 'user', 'update', body);
 
   const message = {
-    action: 'updated', success: true, resource: 'user', resource_id: userId
+    action: 'update',
+    success: true,
+    resource: 'vehicle',
+    resource_id: vehicleId
   };
   const result = {
     body: JSON.stringify(message)

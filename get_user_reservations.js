@@ -1,8 +1,9 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function getSlots(tripId) {
-  let params = {
+  const params = {
     TableName: process.env.dynamodb_table_name,
     IndexName: process.env.dynamodb_index_name,
     ScanIndexForward: true,
@@ -12,13 +13,13 @@ async function getSlots(tripId) {
       ':trip_id': tripId
     }
   };
-  let data = await dynamoDB.query(params).promise();
+  const data = await dynamoDB.query(params).promise();
   return data.Items;
 }
 
-exports.handler = async event => {
-  let tripId = event.pathParameters.trip;
-  let result = await getSlots(tripId);
+exports.handler = async (event) => {
+  const tripId = event.pathParameters.trip;
+  const result = await getSlots(tripId);
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },

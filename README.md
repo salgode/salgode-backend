@@ -6,7 +6,8 @@
 # Salgode API
 
 API alojada en Amazon Web Services haciendo uso de API Gateway, Lambda y DynamoDB.
-Frontend se encuentra [aquí](https://github.com/Varuscl/salgode/).
+La app móvil se encuentra [aquí](https://github.com/salgode/salgode-mobile).
+Y la app web se encuentra [aquí](https://github.com/salgode/salgode-web)
 
 Sigue el desarrollo en [nuestro Trello](https://trello.com/b/GCTJ1iMU/salgode).
 
@@ -62,16 +63,16 @@ Se aprecia el aporte al backend de:
 - [Matías Andrade](https://github.com/mandrade2)
 - [José Morales Lira](https://github.com/josemlira)
 - [Bruno Calderon](https://github.com/brunocalderon)
+- [Cristian Eing](https://github.com/cristianeing)
+- [Benjamín Benavides](https://github.com/benjavides)
+- [Felipe Navarro](https://github.com/fcnavarro)
+- [Juanfra Campos](https://github.com/jfcampos1)
 - [Domingo Ramírez](https://github.com/chuma9615)
 - [Maurice Poirrier](https://github.com/mauricepoirrier)
-- [Felipe Navarro](https://github.com/fcnavarro)
 - [Bernardo Subercaseaux](https://github.com/bsubercaseaux)
-- [Juanfra Campos](https://github.com/jfcampos1)
-- [Cristian Eing](https://github.com/cristianeing)
 - [Antonio Fontaine](https://github.com/afontainec)
 - [Diego Bordeu](https://github.com/diegobordeu)
 - [Luis Fros](https://github.com/LuisFros)
-- [Benjamín Benavides](https://github.com/benjavides)
 
 <!-- BADGES -->
 

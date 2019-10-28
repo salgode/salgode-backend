@@ -1,38 +1,56 @@
 const aws = require('aws-sdk');
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
+const UsersTableName = process.env.dynamodb_users_table_name;
+
 async function getUser(userId) {
-  let params = {
-    TableName: process.env.dynamodb_table_name,
-    ScanIndexForward: true,
-    ProjectionExpression:
-      '#user_id, #email, #first_name, #last_name, #phone, #user_identifications, #car',
-    ExpressionAttributeNames: {
-      '#user_id': 'user_id',
-      '#email': 'email',
-      '#first_name': 'first_name',
-      '#last_name': 'last_name',
-      '#phone': 'phone',
-      '#user_identifications': 'user_identifications',
-      '#car': 'car'
+  const params = {
+    TableName: UsersTableName,
+    Key: {
+      user_id: userId
     },
-    KeyConditionExpression: 'user_id = :user_id',
-    ExpressionAttributeValues: {
-      ':user_id': userId
-    }
+    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications'
   };
-  let data = await dynamoDB.query(params).promise();
-  return data.Items[0];
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
 }
 
-exports.handler = async event => {
-  let userId = event.pathParameters.id;
-  console.log('userId', userId);
-  let result = await getUser(userId);
-  const response = {
-    statusCode: 200,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(result)
+function parseBody(result) {
+  return {
+    user_id: result.user_id,
+    first_name: result.first_name,
+    last_name: result.last_name,
+    avatar: result.user_identifications.selfie_image,
+    user_verifications: {
+      phone: !!result.phone,
+      identity:
+        !!result.user_identifications.identification.front
+        && !!result.user_identifications.identification.back,
+      driver_license:
+        !!result.user_identifications.driver_license.front
+        && !!result.user_identifications.driver_license.back
+    }
   };
-  return response;
+}
+
+exports.handler = async (event) => {
+  const userId = event.pathParameters.user;
+  const result = await getUser(userId);
+  if (result) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(parseBody(result))
+    };
+  }
+
+  const responseBody = {
+    message: 'User does not exist'
+  };
+  return {
+    statusCode: 422,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify(responseBody)
+  };
 };
