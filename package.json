@@ -1,7 +1,7 @@
 {
   "name": "salgode-backend",
   "description": "SalgoDe Backend",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
