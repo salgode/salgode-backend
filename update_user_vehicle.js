@@ -99,7 +99,7 @@ exports.handler = async (event) => {
     }
   };
   await updateUserVehicle(vehicleId, body);
-  await createEvent(userId, vehicleId, 'user', 'update', body);
+  await createEvent(userId, vehicleId, 'vehicle', 'update', body);
 
   const message = {
     action: 'update',
