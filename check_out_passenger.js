@@ -1,9 +1,6 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
 
@@ -45,7 +42,7 @@ async function checkIn(reservation) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
 
   const reservation = await getReservation(userId, tripId);

@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const PlacesTableName = process.env.dynamodb_places_table_name;
@@ -124,7 +121,7 @@ async function getVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
 
   let trips = await getTripsByDriver(userId);
   let reservations;

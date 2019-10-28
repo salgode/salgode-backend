@@ -3,9 +3,6 @@ const bcrypt = require('bcryptjs');
 const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const updateableAttrs = [
@@ -94,7 +91,7 @@ function hashPassword(userPassword) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
   const userFromLogin = await getUser(userId);
   if (body.current_password && body.new_password) {
