@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
@@ -128,7 +125,7 @@ function mergeItems(trips, driverSelf, vehicles, places) {
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
 
   const trips = await getTripAsDriver(userId);
   const rawVehicleIds = trips.map((t) => t.vehicle_id);

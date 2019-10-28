@@ -2,8 +2,6 @@ const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const VehicleTableName = process.env.dynamodb_vehicles_table_name;
 const UserTableName = process.env.dynamodb_users_table_name;
 
@@ -36,7 +34,7 @@ async function deleteUserVehicle(vehicleId) {
 
 exports.handler = async (event) => {
   const vehicleId = event.pathParameters.vehicle;
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
   const userVehicle = await getUserVehicle(userId, vehicleId);
   if (userVehicle) {
     await deleteUserVehicle(vehicleId);

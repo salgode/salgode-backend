@@ -2,9 +2,6 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function createTripReservation(tripId, userId, reservedSeats, route) {
@@ -57,7 +54,7 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
   const tripId = body.trip_id;
   const routeObj = body.route;
