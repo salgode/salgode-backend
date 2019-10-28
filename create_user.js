@@ -1,18 +1,37 @@
 const aws = require('aws-sdk');
-const uuidv4 = require('uuid/v4');
-const moment = require('moment');
 const bcrypt = require('bcryptjs');
+const moment = require('moment');
+const uuidv4 = require('uuid/v4');
 
-const UsersTableName = process.env.dynamodb_users_table_name;
-const UsersIndexName = process.env.dynamodb_users_index_name;
+const EventsTableName = process.env.dynamodb_events_table_name;
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const UsersTableName = process.env.dynamodb_users_table_name;
+const UsersIndexName = process.env.dynamodb_users_index_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function hashPassword(userPassword) {
   const Salt = bcrypt.genSaltSync(15);
   return bcrypt.hashSync(userPassword, Salt);
+}
+
+async function createEvent(userId, resourceId, resource, action, data) {
+  const eventId = `evt_${uuidv4()}`;
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const params = {
+    TableName: EventsTableName,
+    Item: {
+      event_id: eventId,
+      user_id: userId,
+      resource_id: resourceId,
+      resource,
+      action,
+      event_data: data,
+      created_at: timestamp
+    }
+  };
+  await dynamoDB.put(params).promise();
 }
 
 async function checkEmail(userEmail) {
@@ -123,6 +142,7 @@ exports.handler = async (event) => {
     identificationImages,
     createdAt
   );
+  await createEvent(userId, userId, 'user', 'create', body);
   const selfieUrl = identificationImages.selfie_image
     ? await getImageUrl(identificationImages.selfie_image)
     : null;
