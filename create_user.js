@@ -16,38 +16,6 @@ function hashPassword(userPassword) {
   return bcrypt.hashSync(userPassword, Salt);
 }
 
-async function createEvent(userId, resourceId, resource, action, data) {
-  const eventId = `evt_${uuidv4()}`;
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  const params = {
-    TableName: EventsTableName,
-    Item: {
-      event_id: eventId,
-      user_id: userId,
-      resource_id: resourceId,
-      resource,
-      action,
-      event_data: data,
-      created_at: timestamp
-    }
-  };
-  await dynamoDB.put(params).promise();
-}
-
-async function checkEmail(userEmail) {
-  const params = {
-    TableName: UsersTableName,
-    IndexName: UsersIndexName,
-    ProjectionExpression: 'user_id, email',
-    KeyConditionExpression: 'email = :email',
-    ExpressionAttributeValues: {
-      ':email': userEmail
-    }
-  };
-  const data = await dynamoDB.query(params).promise();
-  return data.Count;
-}
-
 function parseUrl(baseUrl, folder, file) {
   return `${baseUrl}/${folder}/${file}`;
 }
@@ -65,45 +33,90 @@ async function getImageUrl(imageId) {
   return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
+async function checkEmail(userEmail) {
+  const params = {
+    TableName: UsersTableName,
+    IndexName: UsersIndexName,
+    ProjectionExpression: 'user_id, email',
+    KeyConditionExpression: 'email = :email',
+    ExpressionAttributeValues: {
+      ':email': userEmail
+    }
+  };
+  const data = await dynamoDB.query(params).promise();
+  return data.Count;
+}
+
 async function createUser(
-  userId,
-  bearerToken,
   userEmail,
-  passwordHash,
+  userPassword,
   firstName,
   lastName,
   userPhone,
-  identificationImages,
-  createdAt
+  userIdentifications,
+  rawData
 ) {
-  const params = {
-    TableName: UsersTableName,
-    Item: {
-      user_id: userId,
-      email: userEmail,
-      password_hash: passwordHash,
-      bearer_token: bearerToken,
-      first_name: firstName,
-      last_name: lastName,
-      phone: userPhone,
-      user_identifications: {
-        selfie_image: identificationImages.selfie_image,
-        identification: {
-          front: identificationImages.identification_image_front,
-          back: identificationImages.identification_image_back
-        },
-        driver_license: {
-          front: identificationImages.driver_license_image_front,
-          back: identificationImages.driver_license_image_back
-        }
-      },
-      vehicles: [],
-      created_at: createdAt,
-      updated_at: createdAt
-    }
-  };
-  const data = await dynamoDB.put(params).promise();
-  return data;
+  const eventId = `evt_${uuidv4()}`;
+  const userId = `usr_${uuidv4()}`;
+  const bearerToken = uuidv4();
+  const passwordHash = hashPassword(userPassword);
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const eventData = rawData;
+  delete eventData.password;
+  try {
+    await dynamoDB
+      .transactWrite({
+        TransactItems: [
+          {
+            Put: {
+              TableName: UsersTableName,
+              Item: {
+                user_id: userId,
+                email: userEmail,
+                password_hash: passwordHash,
+                bearer_token: bearerToken,
+                first_name: firstName,
+                last_name: lastName,
+                phone: userPhone,
+                user_identifications: {
+                  selfie_image: userIdentifications.selfie_image,
+                  identification: {
+                    front: userIdentifications.identification_image_front,
+                    back: userIdentifications.identification_image_back
+                  },
+                  driver_license: {
+                    front: userIdentifications.driver_license_image_front,
+                    back: userIdentifications.driver_license_image_back
+                  }
+                },
+                vehicles: [],
+                created_at: timestamp,
+                updated_at: timestamp
+              },
+              ConditionExpression: 'attribute_not_exists(email)'
+            }
+          },
+          {
+            Put: {
+              TableName: EventsTableName,
+              Item: {
+                event_id: eventId,
+                user_id: userId,
+                resource_id: userId,
+                resource: 'user',
+                action: 'create',
+                event_data: eventData,
+                created_at: timestamp
+              }
+            }
+          }
+        ]
+      })
+      .promise();
+    return { userId, bearerToken };
+  } catch (e) {
+    return false;
+  }
 }
 
 exports.handler = async (event) => {
@@ -113,10 +126,9 @@ exports.handler = async (event) => {
   const firstName = body.first_name;
   const lastName = body.last_name;
   const userPhone = body.phone;
-  const identificationImages = body.user_identifications;
+  const userIdentifications = body.user_identifications;
 
   const emailIsUsed = await checkEmail(userEmail);
-
   if (emailIsUsed) {
     const responseBody = {
       message: 'Email has already been used'
@@ -127,36 +139,30 @@ exports.handler = async (event) => {
       body: JSON.stringify(responseBody)
     };
   }
-  const userId = `usr_${uuidv4()}`;
-  const bearerToken = uuidv4();
-  const createdAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  const passwordHash = hashPassword(userPassword);
-  await createUser(
-    userId,
-    bearerToken,
+
+  const { userId, bearerToken } = await createUser(
     userEmail,
-    passwordHash,
+    userPassword,
     firstName,
     lastName,
     userPhone,
-    identificationImages,
-    createdAt
+    userIdentifications,
+    body
   );
-  await createEvent(userId, userId, 'user', 'create', body);
-  const selfieUrl = identificationImages.selfie_image
-    ? await getImageUrl(identificationImages.selfie_image)
+  const selfieUrl = userIdentifications.selfie_image
+    ? await getImageUrl(userIdentifications.selfie_image)
     : null;
-  const identFrontUrl = identificationImages.identification_image_front
-    ? await getImageUrl(identificationImages.identification_image_front)
+  const identFrontUrl = userIdentifications.identification_image_front
+    ? await getImageUrl(userIdentifications.identification_image_front)
     : null;
-  const identBackUrl = identificationImages.identification_image_back
-    ? await getImageUrl(identificationImages.identification_image_back)
+  const identBackUrl = userIdentifications.identification_image_back
+    ? await getImageUrl(userIdentifications.identification_image_back)
     : null;
-  const driverFrontUrl = identificationImages.driver_license_image_front
-    ? await getImageUrl(identificationImages.driver_license_image_front)
+  const driverFrontUrl = userIdentifications.driver_license_image_front
+    ? await getImageUrl(userIdentifications.driver_license_image_front)
     : null;
-  const driverBackUrl = identificationImages.driver_license_image_back
-    ? await getImageUrl(identificationImages.driver_license_image_back)
+  const driverBackUrl = userIdentifications.driver_license_image_back
+    ? await getImageUrl(userIdentifications.driver_license_image_back)
     : null;
   const responseBody = {
     created: true,
@@ -170,12 +176,12 @@ exports.handler = async (event) => {
     user_verifications: {
       phone: !!userPhone,
       identity:
-        !!identificationImages.selfie_image
-        && !!identificationImages.identification_image_front
-        && !!identificationImages.identification_image_back,
+        !!userIdentifications.selfie_image
+        && !!userIdentifications.identification_image_front
+        && !!userIdentifications.identification_image_back,
       driver_license:
-        !!identificationImages.driver_license_image_front
-        && !!identificationImages.driver_license_image_back
+        !!userIdentifications.driver_license_image_front
+        && !!userIdentifications.driver_license_image_back
     },
     user_identifications: {
       selfie: selfieUrl,
