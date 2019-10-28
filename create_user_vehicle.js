@@ -65,7 +65,6 @@ async function createVehicle(userId, alias, vehicleAttrs, vehicleIdentif, rawDat
       .promise();
     return vehicleId;
   } catch (e) {
-    console.log(e);
     return false;
   }
 }
