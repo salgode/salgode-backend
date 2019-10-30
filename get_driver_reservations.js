@@ -91,7 +91,6 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
 }
 
 async function formatResponse(reservation) {
-  console.log(reservation.passenger_id);
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -104,7 +103,7 @@ async function formatResponse(reservation) {
   };
 }
 
-async function singleReservationResponse(reservationId, tripId) {
+async function singleReservationResponse(reservationId) {
   const reservation = await getReservation(reservationId);
   const result = await formatResponse(reservation);
   return result;
@@ -116,11 +115,12 @@ exports.handler = async (event) => {
   const tripId = event.pathParameters.trip;
   const reservations = await getReservationsForTrip(tripId);
 
-  let response = [];
+  const response = [];
 
   for (let i = 0; i < reservations.length; i += 1) {
-    let singleReservationId = reservations[i].reservation_id;
-    let singleReservation = await singleReservationResponse(singleReservationId);
+    const singleReservationId = reservations[i].reservation_id;
+    // eslint-disable-next-line no-await-in-loop
+    const singleReservation = await singleReservationResponse(singleReservationId);
     response.push(singleReservation);
   }
 
