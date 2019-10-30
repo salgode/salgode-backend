@@ -39,11 +39,21 @@ async function createVehicle(userId, alias, vehicleAttrs, vehicleIdentif, rawDat
               Item: {
                 vehicle_id: vehicleId,
                 alias,
-                vehicle_attributes: vehicleAttrs,
+                vehicle_attributes: {
+                  type: vehicleAttrs.type,
+                  model: vehicleAttrs.model,
+                  seats: vehicleAttrs.seats,
+                  color: vehicleAttrs.color,
+                  brand: vehicleAttrs.brand
+                },
                 vehicle_verifications: {
                   identification: false
                 },
-                vehicle_identifications: vehicleIdentif,
+                vehicle_identifications: {
+                  type: vehicleIdentif.type,
+                  identification: vehicleIdentif.identification,
+                  country: vehicleIdentif.country
+                },
                 created_at: timestamp,
                 updated_at: timestamp
               }
@@ -79,7 +89,12 @@ exports.handler = async (event) => {
   const vehicleAttrs = body.vehicle_attributes;
   const vehicleIdentif = body.vehicle_identifications;
 
-  if (!vehicleAttrs || !vehicleIdentif || isEmpty(vehicleAttrs) || isEmpty(vehicleIdentif)) {
+  if (
+    !vehicleAttrs || !vehicleIdentif || isEmpty(vehicleAttrs) || isEmpty(vehicleIdentif)
+    || !vehicleIdentif.type || !vehicleIdentif.identification || !vehicleIdentif.country
+    || !vehicleAttrs.type || !vehicleAttrs.seats || !vehicleAttrs.color
+    || !vehicleAttrs.brand || !vehicleAttrs.model
+  ) {
     return {
       statusCode: 400,
       headers: { 'Access-Control-Allow-Origin': '*' },
