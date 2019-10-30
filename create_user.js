@@ -78,6 +78,12 @@ async function createUser(
                 first_name: firstName,
                 last_name: lastName,
                 phone: userPhone,
+                user_verifications: {
+                  email: false,
+                  phone: false,
+                  identity: { front: false, back: false },
+                  driver_license: { front: false, back: false }
+                },
                 user_identifications: {
                   selfie_image: userIdentifications.selfie_image,
                   identification: {
@@ -92,8 +98,7 @@ async function createUser(
                 vehicles: [],
                 created_at: timestamp,
                 updated_at: timestamp
-              },
-              ConditionExpression: 'attribute_not_exists(email)'
+              }
             }
           },
           {
@@ -174,14 +179,10 @@ exports.handler = async (event) => {
     phone: userPhone,
     avatar: selfieUrl,
     user_verifications: {
-      phone: !!userPhone,
-      identity:
-        !!userIdentifications.selfie_image
-        && !!userIdentifications.identification_image_front
-        && !!userIdentifications.identification_image_back,
-      driver_license:
-        !!userIdentifications.driver_license_image_front
-        && !!userIdentifications.driver_license_image_back
+      email: false,
+      phone: false,
+      identity: false,
+      driver_license: false
     },
     user_identifications: {
       selfie: selfieUrl,
