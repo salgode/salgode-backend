@@ -64,7 +64,7 @@ async function getVehicles(vehicleIds) {
       [VehiclesTableName]: {
         Keys: mapIdKeys(vehicleIds, 'vehicle_id'),
         ProjectionExpression:
-          'vehicle_id, vehicle_attributes, vehicle_identifications',
+          'vehicle_id, vehicle_verifications, vehicle_attributes, vehicle_identifications',
         ConsistentRead: false
       }
     }
