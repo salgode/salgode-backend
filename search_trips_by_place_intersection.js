@@ -14,6 +14,10 @@ function mapIdKeys(ids, key) {
   }));
 }
 
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
 function repeated(value, index, self) {
   return self.indexOf(value) === index;
 }
@@ -137,6 +141,14 @@ function mergeItems(trips, drivers, vehicles, places) {
 exports.handler = async (event) => {
   const tripPoint = event.pathParameters.place;
   const trips = await getTripsByPoint(tripPoint);
+
+  if (trips.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
 
   const rawDriverIds = trips.map((t) => t.driver_id);
   const driverIds = rawDriverIds.filter(repeated);
