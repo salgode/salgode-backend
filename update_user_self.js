@@ -106,7 +106,8 @@ exports.handler = async (event) => {
     last_name: body.last_name,
     phone: body.phone,
     user_identifications: {
-      selfie_image: user.user_identifications.selfie_image,
+      selfie_image:
+        body.user_identifications.selfie_image || user.user_identifications.selfie_image,
       identification: {
         ...user.user_identifications.identification,
         ...body.user_identifications.identification
