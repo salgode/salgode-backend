@@ -21,6 +21,43 @@ function hashPassword(userPassword) {
   return bcrypt.hashSync(userPassword, Salt);
 }
 
+function parseBody(body, user) {
+  return {
+    first_name: body.first_name,
+    last_name: body.last_name,
+    phone: body.phone,
+    user_identifications: {
+      selfie_image:
+        (body.user_identifications && body.user_identifications.selfie_image)
+        || user.user_identifications.selfie_image,
+      identification: {
+        front:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.front)
+          || user.user_identifications.identification.front,
+        back:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.back)
+          || user.user_identifications.identification.back
+      },
+      driver_license: {
+        front:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.front)
+          || user.user_identifications.driver_license.front,
+        back:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.back)
+          || user.user_identifications.driver_license.back
+      }
+    }
+  };
+}
+
 function parseUpdateParams(body, updatedAt) {
   let expression = 'SET ';
   const values = {};
@@ -101,23 +138,7 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body);
   const user = await getUser(userId);
 
-  const updateParams = {
-    first_name: body.first_name,
-    last_name: body.last_name,
-    phone: body.phone,
-    user_identifications: {
-      selfie_image:
-        body.user_identifications.selfie_image || user.user_identifications.selfie_image,
-      identification: {
-        ...user.user_identifications.identification,
-        ...body.user_identifications.identification
-      },
-      driver_license: {
-        ...user.user_identifications.driver_license,
-        ...body.user_identifications.driver_license
-      }
-    }
-  };
+  const updateParams = parseBody(body, user);
 
   if (body.new_password && body.current_password) {
     if (bcrypt.compareSync(body.current_password, user.password_hash)) {
