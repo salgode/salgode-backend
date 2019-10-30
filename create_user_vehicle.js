@@ -40,6 +40,9 @@ async function createVehicle(userId, alias, vehicleAttrs, vehicleIdentif, rawDat
                 vehicle_id: vehicleId,
                 alias,
                 vehicle_attributes: vehicleAttrs,
+                vehicle_verifications: {
+                  identification: false
+                },
                 vehicle_identifications: vehicleIdentif,
                 created_at: timestamp,
                 updated_at: timestamp
