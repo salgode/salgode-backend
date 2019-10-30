@@ -89,6 +89,7 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
 }
 
 async function formatResponse(reservation, trip) {
+  const tripRoute = await getFullPlaceInfoFromReservationRoute(reservation.route);
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -98,7 +99,10 @@ async function formatResponse(reservation, trip) {
     vehicle: await getVehicleInformation(trip.vehicle_id),
     etd_info: trip.etd_info,
     route: trip.route,
-    trip_route: await getFullPlaceInfoFromReservationRoute(reservation.route)
+    trip_route: {
+      start: tripRoute[0],
+      end: tripRoute[1]
+    }
   };
 }
 

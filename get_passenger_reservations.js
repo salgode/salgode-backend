@@ -104,6 +104,7 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
 }
 
 async function formatResponse(reservation, trip) {
+  const tripRoute = await getFullPlaceInfoFromReservationRoute(reservation.route);
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -113,7 +114,10 @@ async function formatResponse(reservation, trip) {
     vehicle: await getVehicleInformation(trip.vehicle_id),
     etd_info: trip.etd_info,
     route: trip.route,
-    trip_route: await getFullPlaceInfoFromReservationRoute(reservation.route)
+    trip_route: {
+      start: tripRoute[0],
+      end: tripRoute[1]
+    }
   };
 }
 
@@ -127,11 +131,11 @@ async function singleReservationResponse(reservationId) {
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
   const reservations = await getReservationsForUser(userId);
-  let response = [];
+  const response = [];
 
   for (let i = 0; i < reservations.length; i += 1) {
-    let singleReservationId = reservations[i].reservation_id;
-    let singleReservation = await singleReservationResponse(singleReservationId);
+    const singleReservationId = reservations[i].reservation_id;
+    const singleReservation = await singleReservationResponse(singleReservationId);
     response.push(singleReservation);
   }
 
