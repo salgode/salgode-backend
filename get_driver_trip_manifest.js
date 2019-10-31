@@ -19,7 +19,6 @@ function repeated(value, index, self) {
 }
 
 async function getTrip(tripId) {
-  console.log('in getTrip');
   const params = {
     TableName: TripsTableName,
     Key: {
@@ -33,7 +32,6 @@ async function getTrip(tripId) {
 }
 
 async function getReservations(tripId) {
-  console.log('in getReservations');
   const params = {
     TableName: ReservationsTableName,
     IndexName: ReservationsIndexName,
@@ -50,7 +48,6 @@ async function getReservations(tripId) {
 }
 
 async function getPlaces(placeIds) {
-  console.log('in getPlaces');
   const params = {
     RequestItems: {
       [PlacesTableName]: {
@@ -66,7 +63,6 @@ async function getPlaces(placeIds) {
 }
 
 async function getPassengers(passengerIds) {
-  console.log('in getPassengers');
   const params = {
     RequestItems: {
       [UsersTableName]: {
@@ -89,7 +85,7 @@ function mergeAssign(reservations, passengers, places) {
   for (let i = 0; i < reservations.length; i += 1) {
     start = places.find((p) => p.place_id === reservations[i].route.start);
     end = places.find((p) => p.place_id === reservations[i].route.end);
-    passenger = passengers.find((p) => p.user_id);
+    passenger = passengers.find((p) => p.user_id === reservations[i].passenger_id);
     data.push({
       passenger_id: passenger.user_id,
       passenger_name: passenger.first_name,
@@ -105,23 +101,27 @@ function mergeAssign(reservations, passengers, places) {
 
 exports.handler = async (event) => {
   const tripId = event.pathParameters.trip;
-  console.log('tripId', tripId);
   const trip = await getTrip(tripId);
-  console.log('trip', trip);
 
   const reservations = await getReservations(tripId);
-  console.log('reservations', reservations);
+  if (!(reservations.length > 0)) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        trip_id: tripId,
+        passengers: []
+      })
+    };
+  }
   const passengerIdsRaw = reservations.map((r) => r.passenger_id);
   const passengerIds = passengerIdsRaw.filter(repeated);
-  console.log('passengerIds', passengerIds);
 
   const passengers = await getPassengers(passengerIds);
-  console.log('passengers', passengers);
-  const places = await getPlaces(trip.route_points);
-  console.log('places', places);
+  const placesIds = trip.route_points.map((rp) => rp).filter(repeated);
+  const places = await getPlaces(placesIds);
 
   const data = mergeAssign(reservations, passengers, places);
-  console.log('data', data);
 
   const bodyResponse = {
     trip_id: trip.trip_id,
