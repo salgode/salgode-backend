@@ -4,6 +4,10 @@ const moment = require('moment');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
 async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoints) {
   const tripId = `tri_${uuidv4()}`;
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
@@ -33,6 +37,22 @@ exports.handler = async (event) => {
   const routePoints = body.route_points;
   const vehicleId = body.vehicle_id;
   const availableSeats = body.available_seats;
+
+  if (
+    !etdInfo || isEmpty(etdInfo) || !routePoints || !(routePoints.length > 0)
+    || !vehicleId || !(availableSeats > 0)
+  ) {
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'trip',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
 
   const [tripId, timestamp] = await createTrip(
     userId, vehicleId, availableSeats, etdInfo, routePoints
