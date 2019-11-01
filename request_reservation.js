@@ -58,7 +58,22 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body);
   const tripId = body.trip_id;
   const routeObj = body.route;
-  const reservedSeats = body.reserved_seats || 1;
+  const reservedSeats = body.reserved_seats;
+
+  if (!tripId || !routeObj || !routeObj.start || !routeObj.end
+    || !body.reserved_seats || !(body.reserved_seats > 0)) {
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'reservation',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
   const result = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
   if (result) {
