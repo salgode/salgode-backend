@@ -13,6 +13,7 @@ const updateableAttrs = [
   'last_name',
   'phone',
   'user_identifications',
+  'user_verifications',
   'password_hash'
 ];
 
@@ -26,6 +27,40 @@ function parseBody(body, user) {
     first_name: body.first_name,
     last_name: body.last_name,
     phone: body.phone,
+    user_verifications: {
+      selfie_image:
+        (body.user_identifications && body.user_identifications.selfie_image)
+          ? false
+          : user.user_verifications.selfie_image,
+      identification: {
+        front:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.front)
+            ? false
+            : user.user_verifications.identification.front,
+        back:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.back)
+            ? false
+            : user.user_verifications.identification.back
+      },
+      driver_license: {
+        front:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.front)
+            ? false
+            : user.user_verifications.driver_license.front,
+        back:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.back)
+            ? false
+            : user.user_verifications.driver_license.back
+      }
+    },
     user_identifications: {
       selfie_image:
         (body.user_identifications && body.user_identifications.selfie_image)
@@ -83,7 +118,7 @@ async function getUser(userId) {
       user_id: userId
     },
     ProjectionExpression:
-      'user_id, first_name, last_name, phone, password_hash, user_identifications'
+      'user_id, first_name, last_name, phone, password_hash, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -140,8 +175,8 @@ exports.handler = async (event) => {
 
   const updateParams = parseBody(body, user);
 
-  if (body.new_password && body.current_password) {
-    if (bcrypt.compareSync(body.current_password, user.password_hash)) {
+  if (body.new_password) {
+    if (body.current_password && bcrypt.compareSync(body.current_password, user.password_hash)) {
       updateParams.password_hash = hashPassword(body.new_password);
       delete body.new_password;
       delete body.current_password;
