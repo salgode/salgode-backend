@@ -13,7 +13,7 @@ async function getUserFromLogin(userEmail) {
     TableName: UsersTableName,
     IndexName: UsersIndexName,
     ProjectionExpression:
-      'user_id, password_hash, vehicle, bearer_token, first_name, last_name, email, phone, user_identifications',
+      'user_id, password_hash, vehicle, bearer_token, first_name, last_name, email, phone, user_identifications, user_verifications',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
       ':email': userEmail
@@ -46,7 +46,6 @@ exports.handler = async (event) => {
   const loginPassword = body.password;
   const userFromLogin = await getUserFromLogin(loginEmail);
   const hashedPassword = userFromLogin.password_hash;
-  delete userFromLogin.password_hash;
 
   const selfieUrl = userFromLogin.user_identifications.selfie_image
     ? await getImageUrl(userFromLogin.user_identifications.selfie_image)
@@ -74,14 +73,14 @@ exports.handler = async (event) => {
       phone: userFromLogin.phone,
       avatar: selfieUrl,
       user_verifications: {
-        phone: !!userFromLogin.phone,
+        email: userFromLogin.user_verifications.email,
+        phone: userFromLogin.user_verifications.phone,
         identity:
-          !!userFromLogin.user_identifications.selfie_image
-          && !!userFromLogin.user_identifications.identification.front
-          && !!userFromLogin.user_identifications.identification.back,
+          userFromLogin.user_verifications.identification.front
+          && userFromLogin.user_verifications.identification.back,
         driver_license:
-          !!userFromLogin.user_identifications.driver_license.front
-          && !!userFromLogin.user_identifications.driver_license.back
+          userFromLogin.user_verifications.driver_license.front
+          && userFromLogin.user_verifications.driver_license.back
       },
       user_identifications: {
         selfie: selfieUrl,
@@ -96,7 +95,7 @@ exports.handler = async (event) => {
       }
     };
     return {
-      statusCode: 201,
+      statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify(responseBody)
     };
