@@ -91,8 +91,8 @@ exports.handler = async (event) => {
         email: result.user_verifications.email,
         phone: result.user_verifications.phone,
         identity:
-          result.user_verifications.identity.front
-          && result.user_verifications.identity.back,
+          result.user_verifications.identification.front
+          && result.user_verifications.identification.back,
         driver_license:
           result.user_verifications.driver_license.front
           && result.user_verifications.driver_license.back
