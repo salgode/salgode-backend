@@ -13,7 +13,7 @@ async function getUserFromLogin(userEmail) {
     TableName: UsersTableName,
     IndexName: UsersIndexName,
     ProjectionExpression:
-      'user_id, password_hash, vehicle, bearer_token, first_name, last_name, email, phone, user_identifications, user_verifications',
+      'user_id, password_hash, vehicles, bearer_token, first_name, last_name, email, phone, user_identifications, user_verifications',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
       ':email': userEmail
@@ -99,7 +99,8 @@ exports.handler = async (event) => {
           front: driverFrontUrl,
           back: driverBackUrl
         }
-      }
+      },
+      vehicles: userFromDb.vehicles
     };
     return {
       statusCode: 200,
