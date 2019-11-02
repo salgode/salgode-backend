@@ -1,10 +1,11 @@
 const aws = require('aws-sdk');
 const bcrypt = require('bcryptjs');
 
-const UsersTableName = process.env.dynamodb_users_table_name;
-const UsersIndexName = process.env.dynamodb_users_index_name;
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const UsersTableName = process.env.dynamodb_users_table_name;
+const UsersIndexName = process.env.dynamodb_users_index_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -25,6 +26,19 @@ async function getUserFromLogin(userEmail) {
 
 function parseUrl(baseUrl, folder, file) {
   return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getVehicle(vehicleId) {
+  const params = {
+    TableName: VehiclesTableName,
+    Key: {
+      vehicle_id: vehicleId
+    },
+    ProjectionExpression:
+      'vehicle_id, alias, vehicle_attributes, vehicle_identifications, vehicle_verifications'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
 }
 
 async function getImageUrl(imageId) {
@@ -53,6 +67,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({ message: 'Unauthorized' })
     };
   }
+
+  const userVehicles = await Promise.all(userFromDb.vehicles.map((v) => getVehicle(v)));
 
   const selfieUrl = userFromDb.user_identifications.selfie_image
     ? await getImageUrl(userFromDb.user_identifications.selfie_image)
@@ -100,7 +116,7 @@ exports.handler = async (event) => {
           back: driverBackUrl
         }
       },
-      vehicles: userFromDb.vehicles
+      vehicles: userVehicles
     };
     return {
       statusCode: 200,

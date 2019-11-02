@@ -54,15 +54,7 @@ exports.handler = async (event) => {
 
   const result = await getUser(userId);
   if (result) {
-    const myVehiclesRaw = await Promise.all(result.vehicles.map((v) => getVehicle(v)));
-    const myVehicles = myVehiclesRaw.map(
-      (v) => ({
-        vehicle_id: v.vehicle_id,
-        nickname: v.alias,
-        nickname_deprecation: 'Use alias instead',
-        alias: v.alias
-      })
-    );
+    const myVehicles = await Promise.all(result.vehicles.map((v) => getVehicle(v)));
 
     const selfieUrl = result.user_identifications.selfie_image
       ? await getImageUrl(result.user_identifications.selfie_image)
