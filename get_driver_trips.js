@@ -139,8 +139,16 @@ function mergeItems(trips, driverSelf, vehicles, places) {
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = event.requestContext.authorizer.user_id;
-
   const trips = await getTripAsDriver(userId);
+
+  if (trips.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
+
   const rawVehicleIds = trips.map((t) => t.vehicle_id);
   const vehicleIds = rawVehicleIds.filter(repeated);
   const placesIdsArrays = trips.map((t) => t.route_points);

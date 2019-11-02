@@ -163,6 +163,15 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const reservations = await getReservations(userId);
   const rawTripIds = reservations.map((r) => r.trip_id);
   const tripIds = rawTripIds.filter(repeated);
+
+  if (tripIds.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
+
   const trips = await getTripsByIds(tripIds);
 
   const rawDriverIds = trips.map((t) => t.driver_id);
