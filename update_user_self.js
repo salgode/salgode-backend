@@ -28,6 +28,11 @@ function parseBody(body, user) {
     last_name: body.last_name,
     phone: body.phone,
     user_verifications: {
+      email: user.user_verifications.email,
+      phone:
+      (body.phone)
+        ? false
+        : user.user_verifications.phone,
       selfie_image:
         (body.user_identifications && body.user_identifications.selfie_image)
           ? false
