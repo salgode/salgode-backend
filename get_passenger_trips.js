@@ -54,7 +54,7 @@ async function getDrivers(driverIds) {
       [UsersTableName]: {
         Keys: mapIdKeys(driverIds, 'user_id'),
         ProjectionExpression:
-          'user_id, first_name, phone, user_identifications.selfie_image',
+          'user_id, first_name, phone, user_identifications.selfie_image, user_verifications',
         ConsistentRead: false
       }
     },
@@ -134,7 +134,18 @@ function mergeItems(trips, drivers, vehicles, places) {
         driver_id: driver.user_id,
         driver_name: driver.first_name,
         driver_phone: driver.phone,
-        driver_avatar: driver.user_identifications.selfie_image
+        driver_avatar: driver.user_identifications.selfie_image,
+        driver_verifications: {
+          email: driver.user_verifications.email,
+          phone: driver.user_verifications.phone,
+          selfie_image: driver.user_verifications.selfie_image,
+          identity:
+            driver.user_verifications.identification.front
+            && driver.user_verifications.identification.back,
+          driver_license:
+            driver.user_verifications.driver_license.front
+            && driver.user_verifications.driver_license.back
+        }
       },
       trip_route_points: routePlace,
       trip_route: {

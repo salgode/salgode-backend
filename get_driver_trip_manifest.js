@@ -68,7 +68,7 @@ async function getPassengers(passengerIds) {
       [UsersTableName]: {
         Keys: mapIdKeys(passengerIds, 'user_id'),
         ProjectionExpression:
-          'user_id, first_name, user_identifications.selfie_image, phone',
+          'user_id, first_name, user_identifications.selfie_image, user_verifications, phone',
         ConsistentRead: false
       }
     }
@@ -91,6 +91,17 @@ function mergeAssign(reservations, passengers, places) {
       passenger_name: passenger.first_name,
       passenger_avatar: passenger.user_identifications.selfie_image,
       passenger_phone: passenger.phone,
+      passenger_verifications: {
+        email: passenger.user_verifications.email,
+        phone: passenger.user_verifications.phone,
+        selfie_image: passenger.user_verifications.selfie_image,
+        identity:
+          passenger.user_verifications.identification.front
+          && passenger.user_verifications.identification.back,
+        driver_license:
+          passenger.user_verifications.driver_license.front
+          && passenger.user_verifications.driver_license.back
+      },
       seats: reservations[i].reserved_seats,
       route: reservations[i].route,
       trip_route: { start, end }

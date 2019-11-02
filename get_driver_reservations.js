@@ -31,11 +31,6 @@ async function getReservation(reservationId) {
   return data.Item;
 }
 
-// Next release
-async function getPassengerScore(passengerId) { // eslint-disable-line no-unused-vars
-  return 5;
-}
-
 async function getPassengerImage(imageId) {
   const params = {
     TableName: process.env.dynamodb_table_name_images,
@@ -56,7 +51,7 @@ async function getPassengerInformation(passengerId) {
       user_id: passengerId
     },
     ProjectionExpression:
-      'first_name, phone, user_identifications'
+      'first_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   const response = {
@@ -64,11 +59,16 @@ async function getPassengerInformation(passengerId) {
     passenger_name: data.Item.first_name,
     passenger_phone: data.Item.phone,
     passenger_avatar: await getPassengerImage(data.Item.user_identifications.selfie_image),
-    passenger_score: await getPassengerScore(passengerId),
     passenger_verifications: {
-      phone: false,
-      identity: false,
-      drivers_license: false
+      email: data.Item.user_verifications.email,
+      phone: data.Item.user_verifications.phone,
+      selfie_image: data.Item.user_verifications.selfie_image,
+      identity:
+        data.Item.user_verifications.identification.front
+        && data.Item.user_verifications.identification.back,
+      driver_license:
+        data.Item.user_verifications.driver_license.front
+        && data.Item.user_verifications.driver_license.back
     }
   };
   return response;

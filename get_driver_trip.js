@@ -32,7 +32,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications'
+    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -100,7 +100,18 @@ exports.handler = async (event) => {
       driver_id: driver.user_id,
       driver_name: driver.first_name,
       driver_phone: driver.phone,
-      driver_avatar: driver.user_identifications.selfie_image
+      driver_avatar: driver.user_identifications.selfie_image,
+      driver_verifications: {
+        email: driver.user_verifications.email,
+        phone: driver.user_verifications.phone,
+        selfie_image: driver.user_verifications.selfie_image,
+        identity:
+          driver.user_verifications.identification.front
+          && driver.user_verifications.identification.back,
+        driver_license:
+          driver.user_verifications.driver_license.front
+          && driver.user_verifications.driver_license.back
+      }
     },
     trip_route_points: routePlace,
     trip_route: {

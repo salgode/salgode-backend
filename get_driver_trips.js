@@ -38,7 +38,9 @@ async function getSelf(userId) {
     TableName: UsersTableName,
     Key: {
       user_id: userId
-    }
+    },
+    ProjectionExpression:
+      'user_id, first_name, last_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -112,7 +114,18 @@ function mergeItems(trips, driverSelf, vehicles, places) {
         driver_id: driverSelf.user_id,
         driver_name: driverSelf.first_name,
         driver_phone: driverSelf.phone,
-        driver_avatar: driverSelf.user_identifications.selfie_image
+        driver_avatar: driverSelf.user_identifications.selfie_image,
+        driver_verifications: {
+          email: driverSelf.user_verifications.email,
+          phone: driverSelf.user_verifications.phone,
+          selfie_image: driverSelf.user_verifications.selfie_image,
+          identity:
+            driverSelf.user_verifications.identification.front
+            && driverSelf.user_verifications.identification.back,
+          driver_license:
+            driverSelf.user_verifications.driver_license.front
+            && driverSelf.user_verifications.driver_license.back
+        }
       },
       trip_route_points: routePlace,
       trip_route: {
