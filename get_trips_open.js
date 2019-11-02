@@ -95,7 +95,6 @@ function getRoutePlace(routePoints, places) {
 function mergeItems(trips, drivers, vehicles, places) {
   const parsedTrips = [];
   let routePlace;
-  let routePlaceModified;
   let vehicle;
   let driver;
   let currentPoint;
@@ -104,10 +103,6 @@ function mergeItems(trips, drivers, vehicles, places) {
     routePlace = getRoutePlace(trips[i].route_points, places);
     driver = drivers.find((d) => trips[i].driver_id === d.user_id);
     currentPoint = places.find((p) => trips[i].current_point === p.place_id);
-    routePlaceModified = routePlace.map((rp) => ({
-      id: rp.place_id,
-      name: rp.place_name
-    }));
     parsedTrips.push({
       trip_id: trips[i].trip_id,
       trip_status: trips[i].trip_status,
@@ -133,10 +128,10 @@ function mergeItems(trips, drivers, vehicles, places) {
         }
       },
       route_points: trips[i].route_points,
-      trip_route_points: routePlaceModified,
+      trip_route_points: routePlace,
       trip_route: {
-        start: routePlaceModified[0],
-        end: routePlaceModified[routePlaceModified.length - 1]
+        start: routePlace[0],
+        end: routePlace[routePlace.length - 1]
       }
     });
   }
