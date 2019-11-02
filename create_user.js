@@ -81,6 +81,7 @@ async function createUser(
                 user_verifications: {
                   email: false,
                   phone: false,
+                  selfie_image: false,
                   identification: { front: false, back: false },
                   driver_license: { front: false, back: false }
                 },
