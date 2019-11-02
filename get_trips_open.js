@@ -26,10 +26,12 @@ async function getTrips() {
     ProjectionExpression:
       'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points',
     KeyConditionExpression: 'trip_status = :expectedStatus',
+    FilterExpression: 'available_seats > :zero',
     ExpressionAttributeValues: {
-      ':expectedStatus': 'open'
+      ':expectedStatus': 'open',
+      ':zero': 0
     },
-    Limit: 10
+    Limit: 15
   };
   const data = await dynamoDB.query(params).promise();
   return data.Items;
