@@ -81,18 +81,18 @@ async function createUser(
                 user_verifications: {
                   email: false,
                   phone: false,
-                  identity: { front: false, back: false },
+                  identification: { front: false, back: false },
                   driver_license: { front: false, back: false }
                 },
                 user_identifications: {
-                  selfie_image: userIdentifications.selfie_image,
+                  selfie_image: userIdentifications.selfie_image || null,
                   identification: {
-                    front: userIdentifications.identification_image_front,
-                    back: userIdentifications.identification_image_back
+                    front: userIdentifications.identification_image_front || null,
+                    back: userIdentifications.identification_image_back || null
                   },
                   driver_license: {
-                    front: userIdentifications.driver_license_image_front,
-                    back: userIdentifications.driver_license_image_back
+                    front: userIdentifications.driver_license_image_front || null,
+                    back: userIdentifications.driver_license_image_back || null
                   }
                 },
                 vehicles: [],
@@ -133,15 +133,28 @@ exports.handler = async (event) => {
   const userPhone = body.phone;
   const userIdentifications = body.user_identifications;
 
+  if (
+    !userEmail || !userPassword || !firstName || !lastName || !userPhone
+    || !userIdentifications || !userIdentifications.selfie_image
+  ) {
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'user',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
   const emailIsUsed = await checkEmail(userEmail);
   if (emailIsUsed) {
-    const responseBody = {
-      message: 'Email has already been used'
-    };
     return {
       statusCode: 409,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
+      body: JSON.stringify({ message: 'Email has already been used' })
     };
   }
 
@@ -154,6 +167,7 @@ exports.handler = async (event) => {
     userIdentifications,
     body
   );
+
   const selfieUrl = userIdentifications.selfie_image
     ? await getImageUrl(userIdentifications.selfie_image)
     : null;
