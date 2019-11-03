@@ -14,10 +14,11 @@ async function checkDuplicated(tripId, userId) {
     IndexName: ReservationsIndexName,
     ProjectionExpression: 'trip_id, passenger_id',
     KeyConditionExpression: 'passenger_id = :passengerId',
-    FilterExpression: 'trip_id = :tripId',
+    FilterExpression: 'trip_id = :tripId and reservation_status <> :reservationStatus',
     ExpressionAttributeValues: {
       ':passengerId': userId,
-      ':tripId': tripId
+      ':tripId': tripId,
+      ':reservationStatus': 'canceled'
     }
   };
   const data = await dynamoDB.query(params).promise();
