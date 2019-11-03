@@ -32,17 +32,12 @@ async function getVehicle(vehicleId) {
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = event.requestContext.authorizer.user_id;
-  console.log({ userId });
   const vehicleId = event.pathParameters.vehicle;
-  console.log({ vehicleId });
 
   const user = await getUser(userId);
-  console.log({ user });
   const vehicleInUser = user.vehicles.filter((vId) => vId === vehicleId);
-  console.log({ vehicleInUser });
   if (vehicleInUser) {
     const vehicle = await getVehicle(vehicleId);
-    console.log({ vehicle });
     const response = {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
