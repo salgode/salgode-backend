@@ -177,6 +177,7 @@ exports.handler = async (event) => {
 
   for (let i = 0; i < reservations.length; i += 1) {
     const singleReservationId = reservations[i].reservation_id;
+    // eslint-disable-next-line no-await-in-loop
     const singleReservation = await singleReservationResponse(singleReservationId);
     response.push(singleReservation);
   }
