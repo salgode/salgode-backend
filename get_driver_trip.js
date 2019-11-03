@@ -67,7 +67,7 @@ async function getPlaces(placeIds) {
   return data.Responses[PlacesTableName];
 }
 
-function getRoutePlace(routePoints, places) {
+function getRoutePlaces(routePoints, places) {
   const routePlace = [];
   let place;
   for (let i = 0; i < routePoints.length; i += 1) {
@@ -86,9 +86,9 @@ exports.handler = async (event) => {
   const vehicle = await getVehicle(trip.vehicle_id);
   const driver = await getUser(userId);
   const places = await getPlaces(trip.route_points);
-  const routePlace = await getRoutePlace(trip.route_points, places);
-  const startPlace = routePlace[0];
-  const endPlace = routePlace[routePlace.length - 1];
+  const routePlaces = await getRoutePlaces(trip.route_points, places);
+  const startPlace = routePlaces[0];
+  const endPlace = routePlaces[routePlaces.length - 1];
 
   const bodyResponse = {
     trip_id: trip.trip_id,
@@ -113,11 +113,14 @@ exports.handler = async (event) => {
           && driver.user_verifications.driver_license.back
       }
     },
-    trip_route_points: routePlace,
+    trip_next_point: trip.current_point + 1 < routePlaces.length
+      ? routePlaces[trip.current_point + 1]
+      : null,
     trip_route: {
       start: startPlace,
       end: endPlace
-    }
+    },
+    trip_route_points: routePlaces
   };
   return {
     statusCode: 200,
