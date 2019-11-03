@@ -20,7 +20,7 @@ function repeated(value, index, self) {
   return self.indexOf(value) === index;
 }
 
-async function getTripsByPoint(tripPoint) {
+async function getTripsByPoint(tripPoint, userId) {
   const params = {
     TableName: TripsTableName,
     IndexName: TripsIndexName,
@@ -29,7 +29,7 @@ async function getTripsByPoint(tripPoint) {
       'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points',
     KeyConditionExpression: 'trip_status = :open',
     FilterExpression:
-      'contains(#route_points, :trip_point) and #seats > :zero',
+      'contains(#route_points, :trip_point) and #seats > :zero and driver_id <> :selfId',
     ExpressionAttributeNames: {
       '#route_points': 'route_points',
       '#seats': 'available_seats'
@@ -37,6 +37,7 @@ async function getTripsByPoint(tripPoint) {
     ExpressionAttributeValues: {
       ':open': 'open',
       ':trip_point': tripPoint,
+      ':selfId': userId,
       ':zero': 0
     }
   };
@@ -167,8 +168,9 @@ async function mergeItems(trips, drivers, vehicles, places, tripPoint) {
 }
 
 exports.handler = async (event) => {
+  const userId = event.requestContext.authorizer.user_id;
   const tripPoint = event.pathParameters.place;
-  const trips = await getTripsByPoint(tripPoint);
+  const trips = await getTripsByPoint(tripPoint, userId);
 
   if (trips.length === 0) {
     return {

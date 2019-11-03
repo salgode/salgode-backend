@@ -18,7 +18,7 @@ function repeated(value, index, self) {
   return self.indexOf(value) === index;
 }
 
-async function getTrips() {
+async function getTrips(userId) {
   const params = {
     TableName: TripsTableName,
     IndexName: TripsIndexName,
@@ -26,9 +26,10 @@ async function getTrips() {
     ProjectionExpression:
       'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points',
     KeyConditionExpression: 'trip_status = :expectedStatus',
-    FilterExpression: 'available_seats > :zero',
+    FilterExpression: 'available_seats > :zero and driver_id <> :selfId',
     ExpressionAttributeValues: {
       ':expectedStatus': 'open',
+      ':selfId': userId,
       ':zero': 0
     },
     Limit: 15
@@ -138,8 +139,9 @@ function mergeItems(trips, drivers, vehicles, places) {
   return parsedTrips;
 }
 
-exports.handler = async () => {
-  const trips = await getTrips();
+exports.handler = async (event) => {
+  const userId = event.requestContext.authorizer.user_id;
+  const trips = await getTrips(userId);
 
   if (trips.length === 0) {
     return {
