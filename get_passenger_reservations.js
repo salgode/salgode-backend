@@ -1,12 +1,43 @@
 const aws = require('aws-sdk');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const PlacesTableName = process.env.dynamodb_places_table_name;
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+const TripsTableName = process.env.dynamodb_trips_table_name;
+const UsersTableName = process.env.dynamodb_users_table_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const PlacesTableName = process.env.dynamodb_table_name_places;
+
+function mapIdKeys(ids, key) {
+  return ids.map((i) => ({
+    [key]: i
+  }));
+}
+
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
+}
 
 async function getReservationsForUser(userId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
-    IndexName: process.env.dynamodb_table_name_reservations_index,
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
     KeyConditionExpression: 'passenger_id = :passenger_id',
     ExpressionAttributeValues: {
       ':passenger_id': userId
@@ -20,7 +51,7 @@ async function getReservationsForUser(userId) {
 
 async function getReservation(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
+    TableName: ReservationsTableName,
     Key: {
       reservation_id: reservationId
     },
@@ -33,7 +64,7 @@ async function getReservation(reservationId) {
 
 async function getTrip(tripId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_trips,
+    TableName: TripsTableName,
     Key: {
       trip_id: tripId
     },
@@ -46,7 +77,7 @@ async function getTrip(tripId) {
 
 async function getDriverInformation(driverId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_users,
+    TableName: UsersTableName,
     Key: {
       user_id: driverId
     },
@@ -58,7 +89,7 @@ async function getDriverInformation(driverId) {
     driver_id: driverId,
     driver_name: data.Item.first_name,
     driver_phone: data.Item.phone,
-    driver_avatar: data.Item.user_identifications.selfie_image,
+    driver_avatar: await getImageUrl(data.Item.user_identifications.selfie_image),
     driver_verifications: {
       email: data.Item.user_verifications.email,
       phone: data.Item.user_verifications.phone,
@@ -76,7 +107,7 @@ async function getDriverInformation(driverId) {
 
 async function getVehicleInformation(vehicleId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_vehicles,
+    TableName: VehiclesTableName,
     Key: {
       vehicle_id: vehicleId
     },
@@ -93,11 +124,11 @@ async function getVehicleInformation(vehicleId) {
   return response;
 }
 
-async function getFullPlaceInfoFromReservationRoute(routePlaces) {
+async function getFullPlaceInfoFromRoute(placeIds) {
   const params = {
     RequestItems: {
       [PlacesTableName]: {
-        Keys: [{ place_id: routePlaces.start }, { place_id: routePlaces.end }],
+        Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
           'place_id, place_name',
         ConsistentRead: false
@@ -110,7 +141,8 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
 }
 
 async function formatResponse(reservation, trip) {
-  const tripRoute = await getFullPlaceInfoFromReservationRoute(reservation.route);
+  const reservationRoute = await getFullPlaceInfoFromRoute(Object.values(reservation.route));
+  const tripRoute = await getFullPlaceInfoFromRoute(trip.route_points);
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -119,11 +151,15 @@ async function formatResponse(reservation, trip) {
     driver: await getDriverInformation(trip.driver_id),
     vehicle: await getVehicleInformation(trip.vehicle_id),
     etd_info: trip.etd_info,
-    route: trip.route,
+    reservation_route: {
+      start: reservationRoute[0],
+      end: reservationRoute[1]
+    },
     trip_route: {
       start: tripRoute[0],
-      end: tripRoute[1]
-    }
+      end: tripRoute[tripRoute.length - 1]
+    },
+    trip_route_points: tripRoute
   };
 }
 
