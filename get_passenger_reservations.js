@@ -141,8 +141,19 @@ async function getFullPlaceInfoFromRoute(placeIds) {
 }
 
 async function formatResponse(reservation, trip) {
-  const reservationRoute = await getFullPlaceInfoFromRoute(Object.values(reservation.route));
-  const tripRoute = await getFullPlaceInfoFromRoute(trip.route_points);
+  const reservationRouteRaw = await getFullPlaceInfoFromRoute(Object.values(reservation.route));
+  const tripRouteRaw = await getFullPlaceInfoFromRoute(trip.route_points);
+  const reservationRoute = [];
+  const tripRoute = [];
+  reservationRoute.push(
+    reservationRouteRaw.find((rr) => rr.place_id === reservation.route.start)
+  );
+  reservationRoute.push(
+    reservationRouteRaw.find((rr) => rr.place_id === reservation.route.end)
+  );
+  for (let i = 0; i < tripRouteRaw.length; i += 1) {
+    tripRoute.push(tripRouteRaw.find((rr) => rr.place_id === trip.route_points[i]));
+  }
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
