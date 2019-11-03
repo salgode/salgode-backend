@@ -2,7 +2,27 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+const TripsTableName = process.env.dynamodb_trips_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
+
+async function checkDuplicated(tripId, userId) {
+  const params = {
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
+    ProjectionExpression: 'trip_id, passenger_id',
+    KeyConditionExpression: 'passenger_id = :passengerId',
+    FilterExpression: 'trip_id = :tripId',
+    ExpressionAttributeValues: {
+      ':passengerId': userId,
+      ':tripId': tripId
+    }
+  };
+  const data = await dynamoDB.query(params).promise();
+  return data.Count;
+}
 
 async function createTripReservation(tripId, userId, reservedSeats, route) {
   const reservationId = `res_${uuidv4()}`;
@@ -14,19 +34,20 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
         TransactItems: [
           {
             ConditionCheck: {
-              TableName: process.env.dynamodb_trips_table_name,
+              TableName: TripsTableName,
               Key: {
                 trip_id: tripId
               },
-              ConditionExpression: 'available_seats >= :reserved_seats',
+              ConditionExpression: 'available_seats >= :reserved_seats and driver_id <> :selfId',
               ExpressionAttributeValues: {
-                ':reserved_seats': reservedSeats
+                ':reserved_seats': reservedSeats,
+                ':selfId': userId
               }
             }
           },
           {
             Put: {
-              TableName: process.env.dynamodb_reservations_table_name,
+              TableName: ReservationsTableName,
               Item: {
                 reservation_id: reservationId,
                 trip_id: tripId,
@@ -74,6 +95,22 @@ exports.handler = async (event) => {
     };
   }
 
+  const isDuplicated = await checkDuplicated(tripId, userId);
+
+  if (isDuplicated) {
+    const responseBody = {
+      action: 'create',
+      success: false,
+      resource: 'reservation',
+      message: 'Reservation already exists'
+    };
+    return {
+      statusCode: 409,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(responseBody)
+    };
+  }
+
   const result = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
   if (result) {
@@ -89,9 +126,14 @@ exports.handler = async (event) => {
       body: JSON.stringify(responseBody)
     };
   }
+  const responseBody = {
+    action: 'create',
+    success: false,
+    resource: 'reservation'
+  };
   return {
     statusCode: 409,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ created: false })
+    body: JSON.stringify(responseBody)
   };
 };
