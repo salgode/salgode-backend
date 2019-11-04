@@ -1,15 +1,23 @@
 const aws = require('aws-sdk');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const PlacesTableName = process.env.dynamodb_places_table_name;
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+const UsersTableName = process.env.dynamodb_users_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const PlacesTableName = process.env.dynamodb_table_name_places;
 
 async function getReservationsForTrip(tripId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
-    IndexName: process.env.dynamodb_table_name_reservations_index,
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
     KeyConditionExpression: 'trip_id = :trip_id',
+    FilterExpression: 'reservation_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':trip_id': tripId
+      ':trip_id': tripId,
+      ':expectedStatus': 'pending'
     },
     ProjectionExpression:
       'reservation_id, reserved_seats'
@@ -20,7 +28,7 @@ async function getReservationsForTrip(tripId) {
 
 async function getReservation(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
+    TableName: ReservationsTableName,
     Key: {
       reservation_id: reservationId
     },
@@ -33,7 +41,7 @@ async function getReservation(reservationId) {
 
 async function getPassengerImage(imageId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_images,
+    TableName: ImagesTableName,
     Key: {
       image_id: imageId
     },
@@ -41,12 +49,12 @@ async function getPassengerImage(imageId) {
       'folder_name, file_name'
   };
   const data = await dynamoDB.get(params).promise();
-  return `https://${process.env.static_image_url_prefix}/${data.Item.folder_name}/${data.Item.file_name}`;
+  return `${ImagesBaseUrl}/${data.Item.folder_name}/${data.Item.file_name}`;
 }
 
 async function getPassengerInformation(passengerId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_users,
+    TableName: UsersTableName,
     Key: {
       user_id: passengerId
     },
@@ -83,8 +91,7 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
           'place_id, place_name',
         ConsistentRead: false
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
