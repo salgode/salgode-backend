@@ -159,6 +159,41 @@ exports.handler = async (event) => {
     };
   }
 
+  let selfieUrl;
+  let identFrontUrl;
+  let identBackUrl;
+  let driverFrontUrl;
+  let driverBackUrl;
+
+  try {
+    selfieUrl = userIdentifications.selfie_image
+      ? await getImageUrl(userIdentifications.selfie_image)
+      : null;
+    identFrontUrl = userIdentifications.identification_image_front
+      ? await getImageUrl(userIdentifications.identification_image_front)
+      : null;
+    identBackUrl = userIdentifications.identification_image_back
+      ? await getImageUrl(userIdentifications.identification_image_back)
+      : null;
+    driverFrontUrl = userIdentifications.driver_license_image_front
+      ? await getImageUrl(userIdentifications.driver_license_image_front)
+      : null;
+    driverBackUrl = userIdentifications.driver_license_image_back
+      ? await getImageUrl(userIdentifications.driver_license_image_back)
+      : null;
+  } catch (err) {
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'user',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
   const { userId, bearerToken } = await createUser(
     userEmail,
     userPassword,
@@ -169,21 +204,6 @@ exports.handler = async (event) => {
     body
   );
 
-  const selfieUrl = userIdentifications.selfie_image
-    ? await getImageUrl(userIdentifications.selfie_image)
-    : null;
-  const identFrontUrl = userIdentifications.identification_image_front
-    ? await getImageUrl(userIdentifications.identification_image_front)
-    : null;
-  const identBackUrl = userIdentifications.identification_image_back
-    ? await getImageUrl(userIdentifications.identification_image_back)
-    : null;
-  const driverFrontUrl = userIdentifications.driver_license_image_front
-    ? await getImageUrl(userIdentifications.driver_license_image_front)
-    : null;
-  const driverBackUrl = userIdentifications.driver_license_image_back
-    ? await getImageUrl(userIdentifications.driver_license_image_back)
-    : null;
   const responseBody = {
     created: true,
     bearer_token: bearerToken,

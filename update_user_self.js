@@ -4,6 +4,7 @@ const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 
 const EventsTableName = process.env.dynamodb_events_table_name;
+const ImagesTableName = process.env.dynamodb_images_table_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
@@ -20,6 +21,23 @@ const updateableAttrs = [
 function hashPassword(userPassword) {
   const Salt = bcrypt.genSaltSync(15);
   return bcrypt.hashSync(userPassword, Salt);
+}
+
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return [image.folder_name, image.file_name];
 }
 
 function parseBody(body, user) {
@@ -192,6 +210,37 @@ exports.handler = async (event) => {
         body: JSON.stringify(({
           message: 'Unauthorized'
         }))
+      };
+    }
+  }
+
+  if (body.user_identifications && !isEmpty(body.user_identifications)) {
+    try {
+      if (updateParams.user_identifications.selfie_image) {
+        await getImageUrl(updateParams.user_identifications.selfie_image);
+      }
+      if (updateParams.user_identifications.driver_license.front) {
+        await getImageUrl(updateParams.user_identifications.driver_license.front);
+      }
+      if (updateParams.user_identifications.driver_license.back) {
+        await getImageUrl(updateParams.user_identifications.driver_license.back);
+      }
+      if (updateParams.user_identifications.driver_license.front) {
+        await getImageUrl(updateParams.user_identifications.driver_license.front);
+      }
+      if (updateParams.user_identifications.driver_license.back) {
+        await getImageUrl(updateParams.user_identifications.driver_license.back);
+      }
+    } catch (err) {
+      return {
+        statusCode: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({
+          action: 'update',
+          success: false,
+          resource: 'user',
+          message: 'Request contains errors'
+        })
       };
     }
   }
