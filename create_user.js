@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 
+const BaseEmailConfirmationUrl = process.env.salgode_email_confirmation_base_url;
 const EventsTableName = process.env.dynamodb_events_table_name;
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
@@ -10,14 +11,19 @@ const UsersTableName = process.env.dynamodb_users_table_name;
 const UsersIndexName = process.env.dynamodb_users_index_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
+const ses = new aws.SES();
 
 function hashPassword(userPassword) {
   const Salt = bcrypt.genSaltSync(15);
   return bcrypt.hashSync(userPassword, Salt);
 }
 
-function parseUrl(baseUrl, folder, file) {
+function parseImageUrl(baseUrl, folder, file) {
   return `${baseUrl}/${folder}/${file}`;
+}
+
+function parseConfirmationUrl(userId, token) {
+  return `${BaseEmailConfirmationUrl}?user=${userId}&token=${token}`;
 }
 
 async function getImageUrl(imageId) {
@@ -30,7 +36,7 @@ async function getImageUrl(imageId) {
   };
   const data = await dynamoDB.get(params).promise();
   const image = data.Item;
-  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
+  return parseImageUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
 async function checkEmail(userEmail) {
@@ -47,6 +53,35 @@ async function checkEmail(userEmail) {
   return data.Count;
 }
 
+async function sendConfirmationEmail(recipientAddress, recipientName, confirmationLink) {
+  const params = {
+    Destination: {
+      ToAddresses: [recipientAddress]
+    },
+    Message: {
+      Subject: { Data: 'Bienvenid@ a SALGODE - Confirma tu email' },
+      Body: {
+        Text:
+        {
+          Data:
+`Hola ${recipientName}!
+
+List@ para hacer del mundo un lugar mejor?
+
+Confirma tu email con este link ${confirmationLink}
+
+Atentamente,
+Equipo #SalgoDe`
+        }
+      }
+    },
+    Source: 'noreply@salgode.cl'
+  };
+
+  const result = await ses.sendEmail(params).promise();
+  return result;
+}
+
 async function createUser(
   userEmail,
   userPassword,
@@ -59,6 +94,7 @@ async function createUser(
   const eventId = `evt_${uuidv4()}`;
   const userId = `usr_${uuidv4()}`;
   const bearerToken = uuidv4();
+  const emailToken = uuidv4();
   const passwordHash = hashPassword(userPassword);
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const eventData = rawData;
@@ -73,6 +109,7 @@ async function createUser(
               Item: {
                 user_id: userId,
                 email: userEmail,
+                email_token: emailToken,
                 password_hash: passwordHash,
                 bearer_token: bearerToken,
                 first_name: firstName,
@@ -119,7 +156,7 @@ async function createUser(
         ]
       })
       .promise();
-    return { userId, bearerToken };
+    return { userId, bearerToken, emailToken };
   } catch (e) {
     return false;
   }
@@ -194,7 +231,7 @@ exports.handler = async (event) => {
     };
   }
 
-  const { userId, bearerToken } = await createUser(
+  const { userId, bearerToken, emailToken } = await createUser(
     userEmail,
     userPassword,
     firstName,
@@ -204,8 +241,11 @@ exports.handler = async (event) => {
     body
   );
 
+  const confirmationUrl = parseConfirmationUrl(userId, emailToken);
+
+  await sendConfirmationEmail(userEmail, firstName, confirmationUrl);
+
   const responseBody = {
-    created: true,
     bearer_token: bearerToken,
     user_id: userId,
     first_name: firstName,
