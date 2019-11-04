@@ -83,6 +83,14 @@ exports.handler = async (event) => {
   const tripId = event.pathParameters.trip;
   const trip = await getTrip(tripId);
 
+  if (trip.driver_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
   const vehicle = await getVehicle(trip.vehicle_id);
   const driver = await getUser(userId);
   const places = await getPlaces(trip.route_points);
