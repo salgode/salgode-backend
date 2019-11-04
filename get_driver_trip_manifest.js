@@ -111,8 +111,17 @@ function mergeAssign(reservations, passengers, places) {
 }
 
 exports.handler = async (event) => {
+  const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
   const trip = await getTrip(tripId);
+
+  if (trip.driver_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
 
   const reservations = await getReservations(tripId);
   if (!(reservations.length > 0)) {
