@@ -30,6 +30,10 @@ async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoi
   return [tripId, timestamp];
 }
 
+function alreadyPassed(time) {
+  return moment(time) < moment();
+}
+
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
@@ -39,8 +43,8 @@ exports.handler = async (event) => {
   const availableSeats = body.available_seats;
 
   if (
-    !etdInfo || isEmpty(etdInfo) || !routePoints || !(routePoints.length > 0)
-    || !vehicleId || !(availableSeats > 0)
+    !etdInfo || isEmpty(etdInfo) || !etdInfo.etd || alreadyPassed(etdInfo.etd)
+    || !routePoints || !(routePoints.length > 0) || !vehicleId || !(availableSeats > 0)
   ) {
     return {
       statusCode: 400,
