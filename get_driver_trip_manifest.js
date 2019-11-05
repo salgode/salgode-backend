@@ -1,5 +1,7 @@
 const aws = require('aws-sdk');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
@@ -29,6 +31,23 @@ async function getTrip(tripId) {
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
+}
+
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
 async function getReservations(tripId) {
@@ -77,7 +96,7 @@ async function getPassengers(passengerIds) {
   return data.Responses[UsersTableName];
 }
 
-function mergeAssign(reservations, passengers, places) {
+async function mergeAssign(reservations, passengers, places) {
   const data = [];
   let passenger;
   let start;
@@ -89,7 +108,8 @@ function mergeAssign(reservations, passengers, places) {
     data.push({
       passenger_id: passenger.user_id,
       passenger_name: passenger.first_name,
-      passenger_avatar: passenger.user_identifications.selfie_image,
+      // eslint-disable-next-line no-await-in-loop
+      passenger_avatar: await getImageUrl(passenger.user_identifications.selfie_image),
       passenger_phone: passenger.phone,
       passenger_verifications: {
         email: passenger.user_verifications.email,
@@ -141,7 +161,7 @@ exports.handler = async (event) => {
   const placesIds = trip.route_points.map((rp) => rp).filter(repeated);
   const places = await getPlaces(placesIds);
 
-  const data = mergeAssign(reservations, passengers, places);
+  const data = await mergeAssign(reservations, passengers, places);
 
   const bodyResponse = {
     trip_id: trip.trip_id,
