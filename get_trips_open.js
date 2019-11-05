@@ -1,6 +1,8 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
@@ -35,6 +37,23 @@ async function getReservations(userId) {
   };
   const data = await dynamoDB.query(params).promise();
   return data.Items;
+}
+
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
 }
 
 async function getTrips(userId) {
@@ -112,7 +131,7 @@ function getRoutePlace(routePoints, places) {
   return routePlace;
 }
 
-function mergeItems(trips, drivers, vehicles, places) {
+async function mergeItems(trips, drivers, vehicles, places) {
   const parsedTrips = [];
   let routePlace;
   let vehicle;
@@ -134,7 +153,8 @@ function mergeItems(trips, drivers, vehicles, places) {
         driver_id: driver.user_id,
         driver_name: driver.first_name,
         driver_phone: driver.phone,
-        driver_avatar: driver.user_identifications.selfie_image,
+        // eslint-disable-next-line no-await-in-loop
+        driver_avatar: await getImageUrl(driver.user_identifications.selfie_image),
         driver_verifications: {
           email: driver.user_verifications.email,
           phone: driver.user_verifications.phone,
@@ -200,7 +220,7 @@ exports.handler = async (event) => {
   const vehicles = await getVehicles(vehicleIds);
   const places = await getPlaces(placesIds);
 
-  const mergedItems = mergeItems(trips, drivers, vehicles, places);
+  const mergedItems = await mergeItems(trips, drivers, vehicles, places);
 
   const response = {
     statusCode: 200,
