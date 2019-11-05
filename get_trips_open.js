@@ -1,4 +1,5 @@
 const aws = require('aws-sdk');
+const moment = require('moment');
 
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
@@ -139,9 +140,13 @@ function mergeItems(trips, drivers, vehicles, places) {
   return parsedTrips;
 }
 
+function notYetStarted(trip) {
+  return moment() < moment(trip.etd_info.etd);
+}
+
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
-  const trips = await getTrips(userId);
+  let trips = await getTrips(userId);
 
   if (trips.length === 0) {
     return {
@@ -150,6 +155,8 @@ exports.handler = async (event) => {
       body: JSON.stringify([])
     };
   }
+
+  trips = trips.filter(notYetStarted);
 
   const rawDriverIds = trips.map((t) => t.driver_id);
   const driverIds = rawDriverIds.filter(repeated);

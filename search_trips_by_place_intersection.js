@@ -1,4 +1,5 @@
 const aws = require('aws-sdk');
+const moment = require('moment');
 
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
@@ -29,15 +30,16 @@ async function getTripsByPoint(tripPoint, userId) {
       'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points',
     KeyConditionExpression: 'trip_status = :open',
     FilterExpression:
-      'contains(#route_points, :trip_point) and #seats > :zero and driver_id <> :selfId',
+      'contains(#route, :place) and #seats > :zero and #driver <> :self',
     ExpressionAttributeNames: {
-      '#route_points': 'route_points',
-      '#seats': 'available_seats'
+      '#route': 'route_points',
+      '#seats': 'available_seats',
+      '#driver': 'driver_id'
     },
     ExpressionAttributeValues: {
       ':open': 'open',
-      ':trip_point': tripPoint,
-      ':selfId': userId,
+      ':place': tripPoint,
+      ':self': userId,
       ':zero': 0
     }
   };
@@ -167,10 +169,14 @@ async function mergeItems(trips, drivers, vehicles, places, tripPoint) {
   return parsedTrips;
 }
 
+function notYetStarted(trip) {
+  return moment() < moment(trip.etd_info.etd);
+}
+
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
   const tripPoint = event.pathParameters.place;
-  const trips = await getTripsByPoint(tripPoint, userId);
+  let trips = await getTripsByPoint(tripPoint, userId);
 
   if (trips.length === 0) {
     return {
@@ -179,6 +185,8 @@ exports.handler = async (event) => {
       body: JSON.stringify([])
     };
   }
+
+  trips = trips.filter(notYetStarted);
 
   const rawDriverIds = trips.map((t) => t.driver_id);
   const driverIds = rawDriverIds.filter(repeated);
