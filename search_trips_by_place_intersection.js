@@ -4,6 +4,8 @@ const moment = require('moment');
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
 const PlacesTableName = process.env.dynamodb_places_table_name;
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
@@ -19,6 +21,22 @@ function mapIdKeys(ids, key) {
 
 function repeated(value, index, self) {
   return self.indexOf(value) === index;
+}
+
+async function getReservations(userId) {
+  const params = {
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
+    ScanIndexForward: false,
+    KeyConditionExpression: 'passenger_id = :userId',
+    FilterExpression: 'reservation_status <> :canceled',
+    ExpressionAttributeValues: {
+      ':userId': userId,
+      ':canceled': 'canceled'
+    }
+  };
+  const data = await dynamoDB.query(params).promise();
+  return data.Items;
 }
 
 async function getTripsByPoint(tripPoint, userId) {
@@ -186,7 +204,19 @@ exports.handler = async (event) => {
     };
   }
 
+  const reservations = await getReservations(userId);
+  const reservedTripIds = reservations.map((r) => r.trip_id);
+
   trips = trips.filter(notYetStarted);
+  trips = trips.filter((t) => !reservedTripIds.includes(t.trip_id));
+
+  if (trips.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
 
   const rawDriverIds = trips.map((t) => t.driver_id);
   const driverIds = rawDriverIds.filter(repeated);
