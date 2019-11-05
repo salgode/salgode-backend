@@ -221,11 +221,12 @@ exports.handler = async (event) => {
   const places = await getPlaces(placesIds);
 
   const mergedItems = await mergeItems(trips, drivers, vehicles, places);
+  const orderedItems = mergedItems.sort((i, j) => j.etd_info.etd < i.etd_info.etd);
 
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(mergedItems)
+    body: JSON.stringify(orderedItems)
   };
   return response;
 };
