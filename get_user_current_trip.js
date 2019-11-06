@@ -41,12 +41,12 @@ async function getTripsByDriver(userId) {
   const params = {
     TableName: TripsTableName,
     IndexName: TripsIndexName,
-    ProjectionExpression:
-      'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
+    ProjectionExpression: 'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
     KeyConditionExpression: 'driver_id = :driver_id',
-    FilterConditionExpression: 'trip_status = in_progress',
+    FilterExpression: 'trip_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':driver_id': userId
+      ':driver_id': userId,
+      ':expectedStatus': 'in_progress'
     },
     ScanIndexForward: false
   };
@@ -60,9 +60,10 @@ async function getAcceptedReservations(userId) {
     IndexName: ReservationsIndexName,
     ProjectionExpression: 'passenger_id, trip_id, route, updated_at',
     KeyConditionExpression: 'passenger_id = :passenger_id',
-    FilterConditionExpression: 'reservation_status = accepted',
+    FilterExpression: 'reservation_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':passenger_id': userId
+      ':passenger_id': userId,
+      ':expectedStatus': 'accepted'
     },
     ScanIndexForward: false
   };
@@ -75,21 +76,9 @@ async function getTripsByIds(tripsIds) {
     RequestItems: {
       [TripsTableName]: {
         Keys: mapTripKeys(tripsIds),
-        AttributesToGet: [
-          'trip_id',
-          'trip_status',
-          'trip_times',
-          'driver_id',
-          'vehicle_id',
-          'available_seats',
-          'current_point',
-          'route_points',
-          'updated_at'
-        ],
-        ConsistentRead: false
+        ProjectionExpression: 'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[TripsTableName];
@@ -131,6 +120,7 @@ exports.handler = async (event) => {
     reservations = await getAcceptedReservations(userId);
     const tripIds = reservations.map((r) => r.trip_id);
     trips = await getTripsByIds(tripIds);
+    trips = trips.filter((t) => t.trip_status === 'in_progress');
   }
 
   // Non empty response
