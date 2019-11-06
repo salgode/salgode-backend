@@ -69,7 +69,7 @@ async function getTrip(tripId) {
       trip_id: tripId
     },
     ProjectionExpression:
-      'driver_id, etd_info, route_points, vehicle_id'
+      'trip_status, driver_id, etd_info, route_points, vehicle_id'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -159,6 +159,7 @@ async function formatResponse(reservation, trip) {
     reservation_status: reservation.reservation_status,
     trip_id: reservation.trip_id,
     trip_role: 'passenger',
+    trip_status: trip.trip_status,
     driver: await getDriverInformation(trip.driver_id),
     vehicle: await getVehicleInformation(trip.vehicle_id),
     etd_info: trip.etd_info,
