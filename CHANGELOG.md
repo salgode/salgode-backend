@@ -2,6 +2,98 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/salgode/salgode-backend/compare/v1.0.0...v1.1.0) (2019-11-07)
+
+
+### Bug Fixes
+
+* **authorizer:** rewrote functions to use context authorization info ([#20](https://github.com/salgode/salgode-backend/issues/20)) ([b7672a3](https://github.com/salgode/salgode-backend/commit/b7672a3))
+* **create_user:** add selfie key to verifications ([35e3705](https://github.com/salgode/salgode-backend/commit/35e3705))
+* **create_user:** set null value if missing key in body ([0695832](https://github.com/salgode/salgode-backend/commit/0695832))
+* **create_user_vehicle:** add vehicle id to user ([e066d57](https://github.com/salgode/salgode-backend/commit/e066d57))
+* **get_driver_trip:** change null response to empty object ([f82099a](https://github.com/salgode/salgode-backend/commit/f82099a))
+* **get_driver_trip_manifest:** fix when no reservations and add robustness ([f1666ee](https://github.com/salgode/salgode-backend/commit/f1666ee))
+* **get_passenger_reservations:** places order consistency ([99346b2](https://github.com/salgode/salgode-backend/commit/99346b2))
+* **get_trips_open:** avatar url ([748f1d8](https://github.com/salgode/salgode-backend/commit/748f1d8))
+* **get_user:** retrieve verifications correctly ([ae777dd](https://github.com/salgode/salgode-backend/commit/ae777dd))
+* **get_user_current_trip:** trip status was not only in progress ([c07f6ef](https://github.com/salgode/salgode-backend/commit/c07f6ef))
+* **get_user_self:** key name in verifications ([90c2e9d](https://github.com/salgode/salgode-backend/commit/90c2e9d))
+* **get_user_vehicle:** remove logs ([f034417](https://github.com/salgode/salgode-backend/commit/f034417))
+* **login_user:** retrieve real verifications ([b4e1991](https://github.com/salgode/salgode-backend/commit/b4e1991))
+* **passenger_reservations:** route key names ([c8d4c2a](https://github.com/salgode/salgode-backend/commit/c8d4c2a))
+* **search_trips_by_place_intersection:** no error on empty trips ([8080825](https://github.com/salgode/salgode-backend/commit/8080825))
+* **search_trips_by_place_intersection:** parse response as docs ([73ee69c](https://github.com/salgode/salgode-backend/commit/73ee69c))
+* **update_user_self:** add email and phone to verifications ([3d43343](https://github.com/salgode/salgode-backend/commit/3d43343))
+* **update_user_self:** add robustness against bad request ([90546b0](https://github.com/salgode/salgode-backend/commit/90546b0))
+* **update_user_self:** selfie_image updateable ([cca9f9e](https://github.com/salgode/salgode-backend/commit/cca9f9e))
+* **update_user_vehicle:** fix resource name on event creation ([18efe5b](https://github.com/salgode/salgode-backend/commit/18efe5b))
+* **user:** add important robustness against unexistent image ids ([45207ee](https://github.com/salgode/salgode-backend/commit/45207ee))
+
+
+### Chore
+
+* remove unused function ([1e32bac](https://github.com/salgode/salgode-backend/commit/1e32bac))
+* rename function ([4a0878f](https://github.com/salgode/salgode-backend/commit/4a0878f))
+* **create_user_vehicle:** remove logs ([eb5867b](https://github.com/salgode/salgode-backend/commit/eb5867b))
+
+
+### Docs
+
+* add landing page and update collaborators ([0f7d010](https://github.com/salgode/salgode-backend/commit/0f7d010))
+
+
+### Features
+
+* **complete_driver_trip:** do not increase current point and handle error response ([239b266](https://github.com/salgode/salgode-backend/commit/239b266))
+* **create_driver_trip:** force required parameters ([ce17c72](https://github.com/salgode/salgode-backend/commit/ce17c72))
+* **create_driver_trip:** validate etd not passed ([5d38a22](https://github.com/salgode/salgode-backend/commit/5d38a22))
+* **create_user:** add create event for security ([1681c2d](https://github.com/salgode/salgode-backend/commit/1681c2d))
+* **create_user:** add user verifications ([eb900c0](https://github.com/salgode/salgode-backend/commit/eb900c0))
+* **create_user_vehicle:** add validations ([41c428a](https://github.com/salgode/salgode-backend/commit/41c428a))
+* **create_user_vehicle:** add verifications ([257398c](https://github.com/salgode/salgode-backend/commit/257398c))
+* **driver_trips:** add privacy for driver ([621617b](https://github.com/salgode/salgode-backend/commit/621617b))
+* **get_driver_reservations:** retrieve only pending reservations ([51f76e3](https://github.com/salgode/salgode-backend/commit/51f76e3))
+* **get_driver_trip:** add next point information ([06669e2](https://github.com/salgode/salgode-backend/commit/06669e2))
+* **get_driver_trip_manifest:** add images urls ([497da8a](https://github.com/salgode/salgode-backend/commit/497da8a))
+* **get_driver_trip_manifest:** add privacy for driver ([aadd0fe](https://github.com/salgode/salgode-backend/commit/aadd0fe))
+* **get_passenger_reservations:** add key names consistency and info details ([c61236f](https://github.com/salgode/salgode-backend/commit/c61236f))
+* **get_passenger_reservations:** add trip status ([1109c57](https://github.com/salgode/salgode-backend/commit/1109c57))
+* **get_trips_open:** add get open trips function with query limit ([5a5ff09](https://github.com/salgode/salgode-backend/commit/5a5ff09))
+* **get_trips_open:** do not retrieve trips without available seats ([a71d5d6](https://github.com/salgode/salgode-backend/commit/a71d5d6))
+* **get_user_self:** retrieve images url and verifications ([c2453ad](https://github.com/salgode/salgode-backend/commit/c2453ad))
+* **login_user:** add vehicles on response ([d0e7c8a](https://github.com/salgode/salgode-backend/commit/d0e7c8a))
+* **login_user:** send 401 if email not exists ([dc003de](https://github.com/salgode/salgode-backend/commit/dc003de))
+* **profile:** retrieve full vehicles info ([651dc6f](https://github.com/salgode/salgode-backend/commit/651dc6f))
+* **request_reservation:** add validations ([cf8425b](https://github.com/salgode/salgode-backend/commit/cf8425b))
+* **request_reservation:** allow duplicated request if other was canceled ([b57cd4f](https://github.com/salgode/salgode-backend/commit/b57cd4f))
+* **request_reservations:** restrict own trip and duplicated ([dad8888](https://github.com/salgode/salgode-backend/commit/dad8888))
+* **search_trips:** add user images and verifications and filter trips without available seats ([871c0c9](https://github.com/salgode/salgode-backend/commit/871c0c9))
+* **search_trips_by_place_intersection:** add vehicle_verifications ([325045c](https://github.com/salgode/salgode-backend/commit/325045c))
+* **trips:** don't show self trips ([bc1629b](https://github.com/salgode/salgode-backend/commit/bc1629b))
+* **trips:** filter already requested trips ([10ef315](https://github.com/salgode/salgode-backend/commit/10ef315))
+* **trips:** get and search trips filtered by date ([5dcbece](https://github.com/salgode/salgode-backend/commit/5dcbece))
+* **trips:** retrieve empty array if there are no trips ([1b9607c](https://github.com/salgode/salgode-backend/commit/1b9607c))
+* **trips:** retrieve places real key names ([f865c51](https://github.com/salgode/salgode-backend/commit/f865c51))
+* **trips:** retrieve trips ordered by lower etd ([2d6bc0a](https://github.com/salgode/salgode-backend/commit/2d6bc0a))
+* **update_user_self:** add robustness ([3a6d1d5](https://github.com/salgode/salgode-backend/commit/3a6d1d5))
+* **update_user_self:** add working and consistent function ([5477d5e](https://github.com/salgode/salgode-backend/commit/5477d5e))
+* **update_user_self:** reset verification when identification updated ([31b6a27](https://github.com/salgode/salgode-backend/commit/31b6a27))
+* **user:** add email confirmation ([d8a012f](https://github.com/salgode/salgode-backend/commit/d8a012f))
+* **user_verifications:** retrieve user verifications ([2501d9d](https://github.com/salgode/salgode-backend/commit/2501d9d))
+
+
+### Refactor
+
+* **create_user:** change to transact items ([0845c76](https://github.com/salgode/salgode-backend/commit/0845c76))
+* **update_user_vehicle:** use transact for updating vehicle and creating event ([84bd3ac](https://github.com/salgode/salgode-backend/commit/84bd3ac))
+
+
+### Style Improvements
+
+* **get_passenger_reservations:** add eslint comment ([715ad70](https://github.com/salgode/salgode-backend/commit/715ad70))
+* add import styling plugin ([eff4b16](https://github.com/salgode/salgode-backend/commit/eff4b16))
+* lint fix ([d833504](https://github.com/salgode/salgode-backend/commit/d833504))
+
 ## [1.0.0](https://github.com/salgode/salgode-backend/compare/v0.0.2...v1.0.0) (2019-10-28)
 
 
