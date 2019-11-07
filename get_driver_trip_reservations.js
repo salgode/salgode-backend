@@ -1,15 +1,37 @@
 const aws = require('aws-sdk');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const PlacesTableName = process.env.dynamodb_places_table_name;
+const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
+const TripsTableName = process.env.dynamodb_trips_table_name;
+const UsersTableName = process.env.dynamodb_users_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const PlacesTableName = process.env.dynamodb_table_name_places;
+
+async function getTrip(tripId) {
+  const params = {
+    TableName: TripsTableName,
+    Key: {
+      trip_id: tripId
+    },
+    ProjectionExpression:
+      'trip_id, driver_id'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
+}
 
 async function getReservationsForTrip(tripId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
-    IndexName: process.env.dynamodb_table_name_reservations_index,
+    TableName: ReservationsTableName,
+    IndexName: ReservationsIndexName,
     KeyConditionExpression: 'trip_id = :trip_id',
+    FilterExpression: 'reservation_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':trip_id': tripId
+      ':trip_id': tripId,
+      ':expectedStatus': 'pending'
     },
     ProjectionExpression:
       'reservation_id, reserved_seats'
@@ -20,7 +42,7 @@ async function getReservationsForTrip(tripId) {
 
 async function getReservation(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
+    TableName: ReservationsTableName,
     Key: {
       reservation_id: reservationId
     },
@@ -31,14 +53,9 @@ async function getReservation(reservationId) {
   return data.Item;
 }
 
-// Next release
-async function getPassengerScore(passengerId) { // eslint-disable-line no-unused-vars
-  return 5;
-}
-
 async function getPassengerImage(imageId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_images,
+    TableName: ImagesTableName,
     Key: {
       image_id: imageId
     },
@@ -46,17 +63,17 @@ async function getPassengerImage(imageId) {
       'folder_name, file_name'
   };
   const data = await dynamoDB.get(params).promise();
-  return `https://${process.env.static_image_url_prefix}/${data.Item.folder_name}/${data.Item.file_name}`;
+  return `${ImagesBaseUrl}/${data.Item.folder_name}/${data.Item.file_name}`;
 }
 
 async function getPassengerInformation(passengerId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_users,
+    TableName: UsersTableName,
     Key: {
       user_id: passengerId
     },
     ProjectionExpression:
-      'first_name, phone, user_identifications'
+      'first_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   const response = {
@@ -64,11 +81,16 @@ async function getPassengerInformation(passengerId) {
     passenger_name: data.Item.first_name,
     passenger_phone: data.Item.phone,
     passenger_avatar: await getPassengerImage(data.Item.user_identifications.selfie_image),
-    passenger_score: await getPassengerScore(passengerId),
     passenger_verifications: {
-      phone: false,
-      identity: false,
-      drivers_license: false
+      email: data.Item.user_verifications.email,
+      phone: data.Item.user_verifications.phone,
+      selfie_image: data.Item.user_verifications.selfie_image,
+      identity:
+        data.Item.user_verifications.identification.front
+        && data.Item.user_verifications.identification.back,
+      driver_license:
+        data.Item.user_verifications.driver_license.front
+        && data.Item.user_verifications.driver_license.back
     }
   };
   return response;
@@ -83,15 +105,17 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
           'place_id, place_name',
         ConsistentRead: false
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
 }
 
 async function formatResponse(reservation) {
-  console.log(reservation.passenger_id);
+  const routePlacesRaw = await getFullPlaceInfoFromReservationRoute(reservation.route);
+  const routePlaces = [];
+  routePlaces.push(routePlacesRaw.find((rpr) => rpr.place_id === reservation.route.start));
+  routePlaces.push(routePlacesRaw.find((rpr) => rpr.place_id === reservation.route.end));
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -100,27 +124,37 @@ async function formatResponse(reservation) {
     passenger: await getPassengerInformation(reservation.passenger_id),
     reserved_seats: reservation.reserved_seats,
     reservation_route: reservation.route,
-    reservation_route_places: await getFullPlaceInfoFromReservationRoute(reservation.route)
+    reservation_route_places: routePlaces
   };
 }
 
-async function singleReservationResponse(reservationId, tripId) {
+async function singleReservationResponse(reservationId) {
   const reservation = await getReservation(reservationId);
   const result = await formatResponse(reservation);
   return result;
 }
 
 exports.handler = async (event) => {
-  /* Next release - compare the request user id with the reservation user id before returning
-  const userId = event.requestContext.authorizer.user_id; */
+  const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
+  const trip = await getTrip(tripId);
+
+  if (trip.driver_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
   const reservations = await getReservationsForTrip(tripId);
 
-  let response = [];
+  const response = [];
 
   for (let i = 0; i < reservations.length; i += 1) {
-    let singleReservationId = reservations[i].reservation_id;
-    let singleReservation = await singleReservationResponse(singleReservationId);
+    const singleReservationId = reservations[i].reservation_id;
+    // eslint-disable-next-line no-await-in-loop
+    const singleReservation = await singleReservationResponse(singleReservationId);
     response.push(singleReservation);
   }
 

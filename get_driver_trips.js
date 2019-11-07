@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
@@ -41,7 +38,9 @@ async function getSelf(userId) {
     TableName: UsersTableName,
     Key: {
       user_id: userId
-    }
+    },
+    ProjectionExpression:
+      'user_id, first_name, last_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -115,7 +114,18 @@ function mergeItems(trips, driverSelf, vehicles, places) {
         driver_id: driverSelf.user_id,
         driver_name: driverSelf.first_name,
         driver_phone: driverSelf.phone,
-        driver_avatar: driverSelf.user_identifications.selfie_image
+        driver_avatar: driverSelf.user_identifications.selfie_image,
+        driver_verifications: {
+          email: driverSelf.user_verifications.email,
+          phone: driverSelf.user_verifications.phone,
+          selfie_image: driverSelf.user_verifications.selfie_image,
+          identity:
+            driverSelf.user_verifications.identification.front
+            && driverSelf.user_verifications.identification.back,
+          driver_license:
+            driverSelf.user_verifications.driver_license.front
+            && driverSelf.user_verifications.driver_license.back
+        }
       },
       trip_route_points: routePlace,
       trip_route: {
@@ -128,9 +138,17 @@ function mergeItems(trips, driverSelf, vehicles, places) {
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
-
+  const userId = event.requestContext.authorizer.user_id;
   const trips = await getTripAsDriver(userId);
+
+  if (trips.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
+
   const rawVehicleIds = trips.map((t) => t.vehicle_id);
   const vehicleIds = rawVehicleIds.filter(repeated);
   const placesIdsArrays = trips.map((t) => t.route_points);

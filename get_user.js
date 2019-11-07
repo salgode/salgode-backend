@@ -10,7 +10,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications'
+    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications.selfie_image, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -23,13 +23,14 @@ function parseBody(result) {
     last_name: result.last_name,
     avatar: result.user_identifications.selfie_image,
     user_verifications: {
-      phone: !!result.phone,
+      email: result.user_verifications.email,
+      phone: result.user_verifications.phone,
       identity:
-        !!result.user_identifications.identification.front
-        && !!result.user_identifications.identification.back,
+        result.user_verifications.identification.front
+        && result.user_verifications.identification.back,
       driver_license:
-        !!result.user_identifications.driver_license.front
-        && !!result.user_identifications.driver_license.back
+        result.user_verifications.driver_license.front
+        && result.user_verifications.driver_license.back
     }
   };
 }

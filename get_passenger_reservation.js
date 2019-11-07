@@ -29,11 +29,6 @@ async function getTrip(tripId) {
   return data.Item;
 }
 
-// Next release
-async function getDriverScore(driverId) { // eslint-disable-line no-unused-vars
-  return 5;
-}
-
 async function getDriverInformation(driverId) {
   const params = {
     TableName: process.env.dynamodb_table_name_users,
@@ -41,14 +36,25 @@ async function getDriverInformation(driverId) {
       user_id: driverId
     },
     ProjectionExpression:
-      'first_name, phone'
+      'first_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   const response = {
     driver_id: driverId,
     driver_name: data.Item.first_name,
     driver_phone: data.Item.phone,
-    driver_score: await getDriverScore(driverId)
+    driver_avatar: data.Item.user_identifications.selfie_image,
+    driver_verifications: {
+      email: data.Item.user_verifications.email,
+      phone: data.Item.user_verifications.phone,
+      selfie_image: data.Item.user_verifications.selfie_image,
+      identity:
+        data.Item.user_verifications.identification.front
+        && data.Item.user_verifications.identification.back,
+      driver_license:
+        data.Item.user_verifications.driver_license.front
+        && data.Item.user_verifications.driver_license.back
+    }
   };
   return response;
 }
@@ -89,6 +95,7 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
 }
 
 async function formatResponse(reservation, trip) {
+  const tripRoute = await getFullPlaceInfoFromReservationRoute(reservation.route);
   return {
     reservation_id: reservation.reservation_id,
     reservation_status: reservation.reservation_status,
@@ -98,7 +105,10 @@ async function formatResponse(reservation, trip) {
     vehicle: await getVehicleInformation(trip.vehicle_id),
     etd_info: trip.etd_info,
     route: trip.route,
-    trip_route: await getFullPlaceInfoFromReservationRoute(reservation.route)
+    trip_route: {
+      start: tripRoute[0],
+      end: tripRoute[1]
+    }
   };
 }
 

@@ -1,13 +1,17 @@
 const aws = require('aws-sdk');
+const moment = require('moment');
 
-const dynamoDB = new aws.DynamoDB.DocumentClient();
-
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
+const TripsIndexName = process.env.dynamodb_trips_index_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
 const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function mapIdKeys(ids, key) {
   return ids.map((i) => ({
@@ -23,29 +27,53 @@ async function getReservations(userId) {
   const params = {
     TableName: ReservationsTableName,
     IndexName: ReservationsIndexName,
+    ScanIndexForward: false,
     KeyConditionExpression: 'passenger_id = :userId',
+    FilterExpression: 'reservation_status <> :canceled',
     ExpressionAttributeValues: {
-      ':userId': userId
+      ':userId': userId,
+      ':canceled': 'canceled'
     }
   };
   const data = await dynamoDB.query(params).promise();
   return data.Items;
 }
 
-async function getTripsByIds(tripsIds) {
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
   const params = {
-    RequestItems: {
-      [TripsTableName]: {
-        Keys: mapIdKeys(tripsIds, 'trip_id'),
-        ProjectionExpression:
-          'trip_id, trip_status, etd_info, trip_times, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
-        ConsistentRead: false
-      }
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
     },
-    ReturnConsumedCapacity: 'NONE'
+    ProjectionExpression: 'file_name, folder_name'
   };
-  const data = await dynamoDB.batchGet(params).promise();
-  return data.Responses[TripsTableName];
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
+}
+
+async function getTrips(userId) {
+  const params = {
+    TableName: TripsTableName,
+    IndexName: TripsIndexName,
+    ScanIndexForward: false,
+    ProjectionExpression:
+      'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points',
+    KeyConditionExpression: 'trip_status = :expectedStatus',
+    FilterExpression: 'available_seats > :zero and driver_id <> :selfId',
+    ExpressionAttributeValues: {
+      ':expectedStatus': 'open',
+      ':selfId': userId,
+      ':zero': 0
+    },
+    Limit: 15
+  };
+  const data = await dynamoDB.query(params).promise();
+  return data.Items;
 }
 
 async function getDrivers(driverIds) {
@@ -57,8 +85,7 @@ async function getDrivers(driverIds) {
           'user_id, first_name, phone, user_identifications.selfie_image, user_verifications',
         ConsistentRead: false
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[UsersTableName];
@@ -70,11 +97,10 @@ async function getVehicles(vehicleIds) {
       [VehiclesTableName]: {
         Keys: mapIdKeys(vehicleIds, 'vehicle_id'),
         ProjectionExpression:
-          'vehicle_id, vehicle_attributes, vehicle_identifications',
+          'vehicle_id, vehicle_verifications, vehicle_attributes, vehicle_identifications',
         ConsistentRead: false
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[VehiclesTableName];
@@ -89,8 +115,7 @@ async function getPlaces(placeIds) {
           'place_id, place_name',
         ConsistentRead: false
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
@@ -106,22 +131,16 @@ function getRoutePlace(routePoints, places) {
   return routePlace;
 }
 
-function mergeItems(trips, drivers, vehicles, places) {
+async function mergeItems(trips, drivers, vehicles, places) {
   const parsedTrips = [];
   let routePlace;
   let vehicle;
   let driver;
   let currentPoint;
-  let startPlace;
-  let endPlace;
   for (let i = 0; i < trips.length; i += 1) {
     vehicle = vehicles.find((v) => trips[i].vehicle_id === v.vehicle_id);
     routePlace = getRoutePlace(trips[i].route_points, places);
-    startPlace = places.find((p) => trips[i].route_points[0] === p.place_id);
     driver = drivers.find((d) => trips[i].driver_id === d.user_id);
-    endPlace = places.find(
-      (p) => trips[i].route_points[trips[i].route_points.length - 1] === p.place_id
-    );
     currentPoint = places.find((p) => trips[i].current_point === p.place_id);
     parsedTrips.push({
       trip_id: trips[i].trip_id,
@@ -134,7 +153,8 @@ function mergeItems(trips, drivers, vehicles, places) {
         driver_id: driver.user_id,
         driver_name: driver.first_name,
         driver_phone: driver.phone,
-        driver_avatar: driver.user_identifications.selfie_image,
+        // eslint-disable-next-line no-await-in-loop
+        driver_avatar: await getImageUrl(driver.user_identifications.selfie_image),
         driver_verifications: {
           email: driver.user_verifications.email,
           phone: driver.user_verifications.phone,
@@ -147,24 +167,26 @@ function mergeItems(trips, drivers, vehicles, places) {
             && driver.user_verifications.driver_license.back
         }
       },
+      route_points: trips[i].route_points,
       trip_route_points: routePlace,
       trip_route: {
-        start: startPlace,
-        end: endPlace
+        start: routePlace[0],
+        end: routePlace[routePlace.length - 1]
       }
     });
   }
   return parsedTrips;
 }
 
-exports.handler = async (event) => { // eslint-disable-line no-unused-vars
+function notYetStarted(trip) {
+  return moment() < moment(trip.etd_info.etd);
+}
+
+exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
+  let trips = await getTrips(userId);
 
-  const reservations = await getReservations(userId);
-  const rawTripIds = reservations.map((r) => r.trip_id);
-  const tripIds = rawTripIds.filter(repeated);
-
-  if (tripIds.length === 0) {
+  if (trips.length === 0) {
     return {
       statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
@@ -172,7 +194,19 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
     };
   }
 
-  const trips = await getTripsByIds(tripIds);
+  const reservations = await getReservations(userId);
+  const reservedTripIds = reservations.map((r) => r.trip_id);
+
+  trips = trips.filter(notYetStarted);
+  trips = trips.filter((t) => !reservedTripIds.includes(t.trip_id));
+
+  if (trips.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify([])
+    };
+  }
 
   const rawDriverIds = trips.map((t) => t.driver_id);
   const driverIds = rawDriverIds.filter(repeated);
@@ -186,12 +220,13 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const vehicles = await getVehicles(vehicleIds);
   const places = await getPlaces(placesIds);
 
-  const mergedItems = mergeItems(trips, drivers, vehicles, places);
+  const mergedItems = await mergeItems(trips, drivers, vehicles, places);
+  const orderedItems = mergedItems.sort((i, j) => j.etd_info.etd < i.etd_info.etd);
 
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(mergedItems)
+    body: JSON.stringify(orderedItems)
   };
   return response;
 };

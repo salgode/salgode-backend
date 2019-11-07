@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
@@ -35,7 +32,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications'
+    ProjectionExpression: 'user_id, first_name, last_name, phone, user_identifications, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -70,7 +67,7 @@ async function getPlaces(placeIds) {
   return data.Responses[PlacesTableName];
 }
 
-function getRoutePlace(routePoints, places) {
+function getRoutePlaces(routePoints, places) {
   const routePlace = [];
   let place;
   for (let i = 0; i < routePoints.length; i += 1) {
@@ -81,17 +78,25 @@ function getRoutePlace(routePoints, places) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
 
   const tripId = event.pathParameters.trip;
   const trip = await getTrip(tripId);
 
+  if (trip.driver_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
   const vehicle = await getVehicle(trip.vehicle_id);
   const driver = await getUser(userId);
   const places = await getPlaces(trip.route_points);
-  const routePlace = await getRoutePlace(trip.route_points, places);
-  const startPlace = routePlace[0];
-  const endPlace = routePlace[routePlace.length - 1];
+  const routePlaces = await getRoutePlaces(trip.route_points, places);
+  const startPlace = routePlaces[0];
+  const endPlace = routePlaces[routePlaces.length - 1];
 
   const bodyResponse = {
     trip_id: trip.trip_id,
@@ -103,13 +108,27 @@ exports.handler = async (event) => {
       driver_id: driver.user_id,
       driver_name: driver.first_name,
       driver_phone: driver.phone,
-      driver_avatar: driver.user_identifications.selfie_image
+      driver_avatar: driver.user_identifications.selfie_image,
+      driver_verifications: {
+        email: driver.user_verifications.email,
+        phone: driver.user_verifications.phone,
+        selfie_image: driver.user_verifications.selfie_image,
+        identity:
+          driver.user_verifications.identification.front
+          && driver.user_verifications.identification.back,
+        driver_license:
+          driver.user_verifications.driver_license.front
+          && driver.user_verifications.driver_license.back
+      }
     },
-    trip_route_points: routePlace,
+    trip_next_point: trip.current_point + 1 < routePlaces.length
+      ? routePlaces[trip.current_point + 1]
+      : {},
     trip_route: {
       start: startPlace,
       end: endPlace
-    }
+    },
+    trip_route_points: routePlaces
   };
   return {
     statusCode: 200,

@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const PlacesTableName = process.env.dynamodb_places_table_name;
@@ -44,12 +41,12 @@ async function getTripsByDriver(userId) {
   const params = {
     TableName: TripsTableName,
     IndexName: TripsIndexName,
-    ProjectionExpression:
-      'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
+    ProjectionExpression: 'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at',
     KeyConditionExpression: 'driver_id = :driver_id',
-    FilterConditionExpression: 'trip_status = in_progress',
+    FilterExpression: 'trip_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':driver_id': userId
+      ':driver_id': userId,
+      ':expectedStatus': 'in_progress'
     },
     ScanIndexForward: false
   };
@@ -63,9 +60,10 @@ async function getAcceptedReservations(userId) {
     IndexName: ReservationsIndexName,
     ProjectionExpression: 'passenger_id, trip_id, route, updated_at',
     KeyConditionExpression: 'passenger_id = :passenger_id',
-    FilterConditionExpression: 'reservation_status = accepted',
+    FilterExpression: 'reservation_status = :expectedStatus',
     ExpressionAttributeValues: {
-      ':passenger_id': userId
+      ':passenger_id': userId,
+      ':expectedStatus': 'accepted'
     },
     ScanIndexForward: false
   };
@@ -78,21 +76,9 @@ async function getTripsByIds(tripsIds) {
     RequestItems: {
       [TripsTableName]: {
         Keys: mapTripKeys(tripsIds),
-        AttributesToGet: [
-          'trip_id',
-          'trip_status',
-          'trip_times',
-          'driver_id',
-          'vehicle_id',
-          'available_seats',
-          'current_point',
-          'route_points',
-          'updated_at'
-        ],
-        ConsistentRead: false
+        ProjectionExpression: 'trip_id, trip_status, etd_info, driver_id, vehicle_id, available_seats, current_point, route_points, updated_at'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[TripsTableName];
@@ -104,7 +90,7 @@ async function getUser(userId) {
     Key: {
       user_id: userId
     },
-    ProjectionExpression: 'user_id, first_name, score, phone, user_identifications.selfie_image'
+    ProjectionExpression: 'user_id, first_name, score, phone, user_identifications.selfie_image, user_verifications'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -124,7 +110,7 @@ async function getVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
 
   let trips = await getTripsByDriver(userId);
   let reservations;
@@ -134,6 +120,7 @@ exports.handler = async (event) => {
     reservations = await getAcceptedReservations(userId);
     const tripIds = reservations.map((r) => r.trip_id);
     trips = await getTripsByIds(tripIds);
+    trips = trips.filter((t) => t.trip_status === 'in_progress');
   }
 
   // Non empty response
@@ -175,7 +162,18 @@ exports.handler = async (event) => {
         driver_name: theDriver.first_name,
         driver_phone: theDriver.phone,
         driver_score: theDriver.score,
-        driver_avatar: theDriver.user_identifications.selfie_image
+        driver_avatar: theDriver.user_identifications.selfie_image,
+        driver_verifications: {
+          email: theDriver.user_verifications.email,
+          phone: theDriver.user_verifications.phone,
+          selfie_image: theDriver.user_verifications.selfie_image,
+          identity:
+           theDriver.user_verifications.identification.front
+            && theDriver.user_verifications.identification.back,
+          driver_license:
+           theDriver.user_verifications.driver_license.front
+            && theDriver.user_verifications.driver_license.back
+        }
       },
       vehicle: {
         vehicle_id: theVehicle.vehicle_id,

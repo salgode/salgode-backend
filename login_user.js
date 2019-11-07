@@ -1,10 +1,11 @@
 const aws = require('aws-sdk');
 const bcrypt = require('bcryptjs');
 
-const UsersTableName = process.env.dynamodb_users_table_name;
-const UsersIndexName = process.env.dynamodb_users_index_name;
 const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
+const UsersTableName = process.env.dynamodb_users_table_name;
+const UsersIndexName = process.env.dynamodb_users_index_name;
+const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -13,7 +14,7 @@ async function getUserFromLogin(userEmail) {
     TableName: UsersTableName,
     IndexName: UsersIndexName,
     ProjectionExpression:
-      'user_id, password_hash, vehicle, bearer_token, first_name, last_name, email, phone, user_identifications',
+      'user_id, password_hash, vehicles, bearer_token, first_name, last_name, email, phone, user_identifications, user_verifications',
     KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: {
       ':email': userEmail
@@ -25,6 +26,19 @@ async function getUserFromLogin(userEmail) {
 
 function parseUrl(baseUrl, folder, file) {
   return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getVehicle(vehicleId) {
+  const params = {
+    TableName: VehiclesTableName,
+    Key: {
+      vehicle_id: vehicleId
+    },
+    ProjectionExpression:
+      'vehicle_id, alias, vehicle_attributes, vehicle_identifications, vehicle_verifications'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
 }
 
 async function getImageUrl(imageId) {
@@ -44,44 +58,52 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body);
   const loginEmail = body.email;
   const loginPassword = body.password;
-  const userFromLogin = await getUserFromLogin(loginEmail);
-  const hashedPassword = userFromLogin.password_hash;
-  delete userFromLogin.password_hash;
+  const userFromDb = await getUserFromLogin(loginEmail);
 
-  const selfieUrl = userFromLogin.user_identifications.selfie_image
-    ? await getImageUrl(userFromLogin.user_identifications.selfie_image)
+  if (!userFromDb) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
+  const userVehicles = await Promise.all(userFromDb.vehicles.map((v) => getVehicle(v)));
+
+  const selfieUrl = userFromDb.user_identifications.selfie_image
+    ? await getImageUrl(userFromDb.user_identifications.selfie_image)
     : null;
-  const identFrontUrl = userFromLogin.user_identifications.identification.front
-    ? await getImageUrl(userFromLogin.user_identifications.identification.front)
+  const identFrontUrl = userFromDb.user_identifications.identification.front
+    ? await getImageUrl(userFromDb.user_identifications.identification.front)
     : null;
-  const identBackUrl = userFromLogin.user_identifications.identification.back
-    ? await getImageUrl(userFromLogin.user_identifications.identification.back)
+  const identBackUrl = userFromDb.user_identifications.identification.back
+    ? await getImageUrl(userFromDb.user_identifications.identification.back)
     : null;
-  const driverFrontUrl = userFromLogin.user_identifications.driver_license.front
-    ? await getImageUrl(userFromLogin.user_identifications.driver_license.front)
+  const driverFrontUrl = userFromDb.user_identifications.driver_license.front
+    ? await getImageUrl(userFromDb.user_identifications.driver_license.front)
     : null;
-  const driverBackUrl = userFromLogin.user_identifications.driver_license.back
-    ? await getImageUrl(userFromLogin.user_identifications.driver_license.back)
+  const driverBackUrl = userFromDb.user_identifications.driver_license.back
+    ? await getImageUrl(userFromDb.user_identifications.driver_license.back)
     : null;
 
-  if (bcrypt.compareSync(loginPassword, hashedPassword)) {
+  if (bcrypt.compareSync(loginPassword, userFromDb.password_hash)) {
     const responseBody = {
-      bearer_token: userFromLogin.bearer_token,
-      user_id: userFromLogin.user_id,
-      first_name: userFromLogin.first_name,
-      last_name: userFromLogin.last_name,
-      email: userFromLogin.email,
-      phone: userFromLogin.phone,
+      bearer_token: userFromDb.bearer_token,
+      user_id: userFromDb.user_id,
+      first_name: userFromDb.first_name,
+      last_name: userFromDb.last_name,
+      email: userFromDb.email,
+      phone: userFromDb.phone,
       avatar: selfieUrl,
       user_verifications: {
-        phone: !!userFromLogin.phone,
+        email: userFromDb.user_verifications.email,
+        phone: userFromDb.user_verifications.phone,
         identity:
-          !!userFromLogin.user_identifications.selfie_image
-          && !!userFromLogin.user_identifications.identification.front
-          && !!userFromLogin.user_identifications.identification.back,
+          userFromDb.user_verifications.identification.front
+          && userFromDb.user_verifications.identification.back,
         driver_license:
-          !!userFromLogin.user_identifications.driver_license.front
-          && !!userFromLogin.user_identifications.driver_license.back
+          userFromDb.user_verifications.driver_license.front
+          && userFromDb.user_verifications.driver_license.back
       },
       user_identifications: {
         selfie: selfieUrl,
@@ -93,20 +115,18 @@ exports.handler = async (event) => {
           front: driverFrontUrl,
           back: driverBackUrl
         }
-      }
+      },
+      vehicles: userVehicles
     };
     return {
-      statusCode: 201,
+      statusCode: 200,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify(responseBody)
     };
   }
-  const responseBody = {
-    message: 'Unauthorized'
-  };
   return {
     statusCode: 401,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+    body: JSON.stringify({ message: 'Unauthorized' })
   };
 };

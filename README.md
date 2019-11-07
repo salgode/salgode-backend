@@ -1,13 +1,13 @@
-<!-- [![travisB]][travisL] -->
 [![stdVersionB]][stdVersionL]
 [![commitsB]][commitsL]
 [![prettierB]][prettierL]
 
-# Salgode API
+# SalgoDe API
 
-API alojada en Amazon Web Services haciendo uso de API Gateway, Lambda y DynamoDB.
+API alojada en Amazon Web Services haciendo uso principalmente de API Gateway, Lambda y DynamoDB.
+La _landing page_ se encuentra [aquí](https://github.com/salgode/salgode-landing).
 La app móvil se encuentra [aquí](https://github.com/salgode/salgode-mobile).
-Y la app web se encuentra [aquí](https://github.com/salgode/salgode-web)
+La app web se encuentra [aquí](https://github.com/salgode/salgode-web)
 
 Sigue el desarrollo en [nuestro Trello](https://trello.com/b/GCTJ1iMU/salgode).
 
@@ -57,11 +57,15 @@ Sigue el desarrollo en [nuestro Trello](https://trello.com/b/GCTJ1iMU/salgode).
 
 ## Agradecimientos
 
-Se aprecia el aporte al backend de:
+Se aprecia el aporte por gestión de equipos a:
 
-- [Franco Méndez Z.](https://github.com/fnmendez)
 - [Matías Andrade](https://github.com/mandrade2)
 - [José Morales Lira](https://github.com/josemlira)
+- [Franco Méndez Z.](https://github.com/fnmendez)
+
+Se aprecia el aporte por código a:
+
+- [Franco Méndez Z.](https://github.com/fnmendez)
 - [Bruno Calderon](https://github.com/brunocalderon)
 - [Cristian Eing](https://github.com/cristianeing)
 - [Benjamín Benavides](https://github.com/benjavides)
@@ -75,9 +79,6 @@ Se aprecia el aporte al backend de:
 - [Luis Fros](https://github.com/LuisFros)
 
 <!-- BADGES -->
-
-<!-- [travisB]:https://travis-ci.com/
-[travisL]:https://travis-ci.com/ -->
 
 [stdVersionB]:https://img.shields.io/badge/release-standard%20version-blue.svg
 [stdVersionL]:https://github.com/conventional-changelog/standard-version

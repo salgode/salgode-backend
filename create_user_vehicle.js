@@ -1,88 +1,138 @@
 const aws = require('aws-sdk');
-const uuidv4 = require('uuid/v4');
 const moment = require('moment');
+const uuidv4 = require('uuid/v4');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
+const EventsTableName = process.env.dynamodb_events_table_name;
 const UsersTableName = process.env.dynamodb_users_table_name;
 const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function createVehicle(nick, seats, type, color, brand, model, vehicleIdentif) {
-  const vehicleId = `veh_${uuidv4()}`;
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  const params = {
-    TableName: VehiclesTableName,
-    Item: {
-      vehicle_id: vehicleId,
-      alias: nick,
-      vehicle_attributes: {
-        seats,
-        type,
-        color,
-        brand,
-        model
-      },
-      vehicle_identifications: vehicleIdentif,
-      created_at: timestamp,
-      updated_at: timestamp
-    }
-  };
-  await dynamoDB.put(params).promise();
-  return [vehicleId, timestamp];
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
-async function updateUserVehicle(userId, vehicleId) {
-  const params = {
-    TableName: UsersTableName,
-    Key: {
-      user_id: userId
-    },
-    UpdateExpression: 'SET vehicles = list_append(vehicles, :vehicle)',
-    ExpressionAttributeValues: {
-      ':vehicle': [vehicleId]
-    },
-    ReturnValues: 'NONE'
-  };
-  const data = await dynamoDB.update(params).promise();
-  return data;
+async function createVehicle(userId, alias, vehicleAttrs, vehicleIdentif, rawData) {
+  const vehicleId = `veh_${uuidv4()}`;
+  const eventId = `evt_${uuidv4()}`;
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  try {
+    await dynamoDB
+      .transactWrite({
+        TransactItems: [
+          {
+            Update: {
+              TableName: UsersTableName,
+              Key: {
+                user_id: userId
+              },
+              UpdateExpression: 'set vehicles = list_append(vehicles, :vehicleId), updated_at = :now',
+              ExpressionAttributeValues: {
+                ':vehicleId': [vehicleId],
+                ':now': timestamp
+              }
+            }
+          },
+          {
+            Put: {
+              TableName: VehiclesTableName,
+              Item: {
+                vehicle_id: vehicleId,
+                alias,
+                vehicle_attributes: {
+                  type: vehicleAttrs.type,
+                  model: vehicleAttrs.model,
+                  seats: vehicleAttrs.seats,
+                  color: vehicleAttrs.color,
+                  brand: vehicleAttrs.brand
+                },
+                vehicle_verifications: {
+                  identification: false
+                },
+                vehicle_identifications: {
+                  type: vehicleIdentif.type,
+                  identification: vehicleIdentif.identification,
+                  country: vehicleIdentif.country
+                },
+                created_at: timestamp,
+                updated_at: timestamp
+              }
+            }
+          },
+          {
+            Put: {
+              TableName: EventsTableName,
+              Item: {
+                event_id: eventId,
+                user_id: userId,
+                resource_id: vehicleId,
+                resource: 'vehicle',
+                action: 'create',
+                event_data: rawData,
+                created_at: timestamp
+              }
+            }
+          }
+        ]
+      })
+      .promise();
+    return vehicleId;
+  } catch (e) {
+    return false;
+  }
 }
 
 exports.handler = async (event) => {
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
-  const nick = body.nickname;
-  const vehicleIdentif = body.vehicle_identification;
-  const {
-    seats, type, color, brand, model
-  } = body;
+  const { alias } = body;
+  const vehicleAttrs = body.vehicle_attributes;
+  const vehicleIdentif = body.vehicle_identifications;
 
-  const [vehicleId, timestamp] = await createVehicle(
-    nick, seats, type, color, brand, model, vehicleIdentif
+  if (
+    !vehicleAttrs || !vehicleIdentif || isEmpty(vehicleAttrs) || isEmpty(vehicleIdentif)
+    || !vehicleIdentif.type || !vehicleIdentif.identification || !vehicleIdentif.country
+    || !vehicleAttrs.type || !vehicleAttrs.seats || !vehicleAttrs.color
+    || !vehicleAttrs.brand || !vehicleAttrs.model
+  ) {
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'vehicle',
+        message: 'Missing attributes or identifications'
+      })
+    };
+  }
+
+  const vehicleId = await createVehicle(
+    userId, alias, vehicleAttrs, vehicleIdentif, body
   );
 
   if (vehicleId) {
-    const result = await updateUserVehicle(userId, vehicleId);
-    if (result) {
-      return {
-        statusCode: 201,
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify(
-          {
-            action: 'created',
-            success: true,
-            resource: 'vehicle',
-            resource_id: vehicleId
-          }
-        )
-      };
-    }
+    return {
+      statusCode: 201,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(
+        {
+          action: 'create',
+          success: true,
+          resource: 'vehicle',
+          resource_id: vehicleId
+        }
+      )
+    };
   }
   return {
     statusCode: 400,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ created: false })
+    body: JSON.stringify({
+      action: 'create',
+      success: false,
+      resource: 'vehicle',
+      message: 'Request contains errors'
+    })
   };
 };

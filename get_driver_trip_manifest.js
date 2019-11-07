@@ -1,5 +1,7 @@
 const aws = require('aws-sdk');
 
+const ImagesTableName = process.env.dynamodb_images_table_name;
+const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
@@ -19,7 +21,6 @@ function repeated(value, index, self) {
 }
 
 async function getTrip(tripId) {
-  console.log('in getTrip');
   const params = {
     TableName: TripsTableName,
     Key: {
@@ -32,8 +33,24 @@ async function getTrip(tripId) {
   return data.Item;
 }
 
+function parseUrl(baseUrl, folder, file) {
+  return `${baseUrl}/${folder}/${file}`;
+}
+
+async function getImageUrl(imageId) {
+  const params = {
+    TableName: ImagesTableName,
+    Key: {
+      image_id: imageId
+    },
+    ProjectionExpression: 'file_name, folder_name'
+  };
+  const data = await dynamoDB.get(params).promise();
+  const image = data.Item;
+  return parseUrl(ImagesBaseUrl, image.folder_name, image.file_name);
+}
+
 async function getReservations(tripId) {
-  console.log('in getReservations');
   const params = {
     TableName: ReservationsTableName,
     IndexName: ReservationsIndexName,
@@ -50,7 +67,6 @@ async function getReservations(tripId) {
 }
 
 async function getPlaces(placeIds) {
-  console.log('in getPlaces');
   const params = {
     RequestItems: {
       [PlacesTableName]: {
@@ -66,13 +82,12 @@ async function getPlaces(placeIds) {
 }
 
 async function getPassengers(passengerIds) {
-  console.log('in getPassengers');
   const params = {
     RequestItems: {
       [UsersTableName]: {
         Keys: mapIdKeys(passengerIds, 'user_id'),
         ProjectionExpression:
-          'user_id, first_name, user_identifications.selfie_image, phone',
+          'user_id, first_name, user_identifications.selfie_image, user_verifications, phone',
         ConsistentRead: false
       }
     }
@@ -81,7 +96,7 @@ async function getPassengers(passengerIds) {
   return data.Responses[UsersTableName];
 }
 
-function mergeAssign(reservations, passengers, places) {
+async function mergeAssign(reservations, passengers, places) {
   const data = [];
   let passenger;
   let start;
@@ -89,12 +104,24 @@ function mergeAssign(reservations, passengers, places) {
   for (let i = 0; i < reservations.length; i += 1) {
     start = places.find((p) => p.place_id === reservations[i].route.start);
     end = places.find((p) => p.place_id === reservations[i].route.end);
-    passenger = passengers.find((p) => p.user_id);
+    passenger = passengers.find((p) => p.user_id === reservations[i].passenger_id);
     data.push({
       passenger_id: passenger.user_id,
       passenger_name: passenger.first_name,
-      passenger_avatar: passenger.user_identifications.selfie_image,
+      // eslint-disable-next-line no-await-in-loop
+      passenger_avatar: await getImageUrl(passenger.user_identifications.selfie_image),
       passenger_phone: passenger.phone,
+      passenger_verifications: {
+        email: passenger.user_verifications.email,
+        phone: passenger.user_verifications.phone,
+        selfie_image: passenger.user_verifications.selfie_image,
+        identity:
+          passenger.user_verifications.identification.front
+          && passenger.user_verifications.identification.back,
+        driver_license:
+          passenger.user_verifications.driver_license.front
+          && passenger.user_verifications.driver_license.back
+      },
       seats: reservations[i].reserved_seats,
       route: reservations[i].route,
       trip_route: { start, end }
@@ -104,24 +131,37 @@ function mergeAssign(reservations, passengers, places) {
 }
 
 exports.handler = async (event) => {
+  const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
-  console.log('tripId', tripId);
   const trip = await getTrip(tripId);
-  console.log('trip', trip);
+
+  if (trip.driver_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
 
   const reservations = await getReservations(tripId);
-  console.log('reservations', reservations);
+  if (!(reservations.length > 0)) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        trip_id: tripId,
+        passengers: []
+      })
+    };
+  }
   const passengerIdsRaw = reservations.map((r) => r.passenger_id);
   const passengerIds = passengerIdsRaw.filter(repeated);
-  console.log('passengerIds', passengerIds);
 
   const passengers = await getPassengers(passengerIds);
-  console.log('passengers', passengers);
-  const places = await getPlaces(trip.route_points);
-  console.log('places', places);
+  const placesIds = trip.route_points.map((rp) => rp).filter(repeated);
+  const places = await getPlaces(placesIds);
 
-  const data = mergeAssign(reservations, passengers, places);
-  console.log('data', data);
+  const data = await mergeAssign(reservations, passengers, places);
 
   const bodyResponse = {
     trip_id: trip.trip_id,

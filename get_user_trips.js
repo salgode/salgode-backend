@@ -1,8 +1,5 @@
 const aws = require('aws-sdk');
 
-// eslint-disable-next-line import/no-absolute-path
-const bearerToUserId = require('/opt/nodejs/bearer_to_user_id.js');
-
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
@@ -73,7 +70,7 @@ async function getDrivers(driverIds) {
       [UsersTableName]: {
         Keys: mapIdKeys(driverIds, 'user_id'),
         ProjectionExpression:
-          'user_id, first_name, phone, user_identifications.selfie_image',
+          'user_id, first_name, phone, user_identifications.selfie_image, user_verifications',
         ConsistentRead: false
       }
     },
@@ -153,7 +150,18 @@ function mergeItems(trips, drivers, vehicles, places) {
         driver_id: driver.user_id,
         driver_name: driver.first_name,
         driver_phone: driver.phone,
-        driver_avatar: driver.user_identifications.selfie_image
+        driver_avatar: driver.user_identifications.selfie_image,
+        driver_verifications: {
+          email: driver.user_verifications.email,
+          phone: driver.user_verifications.phone,
+          selfie_image: driver.user_verifications.selfie_image,
+          identity:
+           driver.user_verifications.identification.front
+            && driver.user_verifications.identification.back,
+          driver_license:
+           driver.user_verifications.driver_license.front
+            && driver.user_verifications.driver_license.back
+        }
       },
       trip_route_points: routePlace,
       trip_route: {
@@ -166,7 +174,7 @@ function mergeItems(trips, drivers, vehicles, places) {
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
-  const userId = await bearerToUserId.bearerToUserId(event.headers.Authorization.substring(7));
+  const userId = event.requestContext.authorizer.user_id;
 
   const allDriverTrips = await getTripAsDriver(userId);
   const reservations = await getReservations(userId);
