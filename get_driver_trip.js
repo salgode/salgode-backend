@@ -123,7 +123,7 @@ exports.handler = async (event) => {
     },
     trip_next_point: trip.current_point + 1 < routePlaces.length
       ? routePlaces[trip.current_point + 1]
-      : null,
+      : {},
     trip_route: {
       start: startPlace,
       end: endPlace
