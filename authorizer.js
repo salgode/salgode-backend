@@ -40,7 +40,7 @@ async function validateToken(userToken) {
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userToken = event.authorizationToken;
   const user = await validateToken(userToken);
-  if (user) {
+  if (user && user.user_verifications.email) {
     return generatePolicy('user', 'Allow', user.user_id);
   } else { // eslint-disable-line no-else-return
     return generatePolicy('user', 'Deny', null);
