@@ -52,11 +52,9 @@ async function getVehicles(vehicleIds) {
       [VehiclesTableName]: {
         Keys: mapIdKeys(vehicleIds, 'vehicle_id'),
         ProjectionExpression:
-          'vehicle_id, vehicle_attributes, vehicle_identifications',
-        ConsistentRead: false
+          'vehicle_id, vehicle_attributes, vehicle_identifications'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[VehiclesTableName];
@@ -68,11 +66,9 @@ async function getPlaces(placeIds) {
       [PlacesTableName]: {
         Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
-          'place_id, place_name',
-        ConsistentRead: false
+          'place_id, place_name'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
@@ -162,10 +158,12 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
 
   const mergedItems = mergeItems(trips, driverSelf, vehicles, places);
 
+  const responseItems = mergedItems.filter((t) => t.trip_status !== 'completed');
+
   const response = {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(mergedItems)
+    body: JSON.stringify(responseItems)
   };
   return response;
 };
