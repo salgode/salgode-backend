@@ -103,6 +103,7 @@ exports.handler = async (event) => {
     trip_status: trip.trip_status,
     etd_info: trip.etd_info,
     available_seats: trip.available_seats,
+    current_point: trip.current_point,
     vehicle,
     driver: {
       driver_id: driver.user_id,
