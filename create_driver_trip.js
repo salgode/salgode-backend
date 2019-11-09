@@ -2,6 +2,9 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
+const TripsTableName = process.env.dynamodb_trips_table_name;
+const UsersTableName = process.env.dynamodb_users_table_name;
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function isEmpty(obj) {
@@ -12,7 +15,7 @@ async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoi
   const tripId = `tri_${uuidv4()}`;
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const params = {
-    TableName: process.env.dynamodb_table_name,
+    TableName: TripsTableName,
     Item: {
       trip_id: tripId,
       driver_id: driverId,
@@ -32,6 +35,18 @@ async function createTrip(driverId, vehicleId, availableSeats, etdInfo, routePoi
 
 function alreadyPassed(time) {
   return moment(time) < moment();
+}
+
+async function getUser(userId) {
+  const params = {
+    TableName: UsersTableName,
+    Key: {
+      user_id: userId
+    },
+    ProjectionExpression: 'user_verifications.driver_license'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
 }
 
 exports.handler = async (event) => {
@@ -54,6 +69,23 @@ exports.handler = async (event) => {
         success: false,
         resource: 'trip',
         message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
+  const user = await getUser(userId);
+  if (
+    !user.user_verifications.driver_license.front
+    || !user.user_verifications.driver_license.back
+  ) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'trip',
+        message: 'Missing driver license verification'
       })
     };
   }
