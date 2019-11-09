@@ -27,23 +27,50 @@ async function forwardTrip(tripId, userId) {
   return data.Attributes;
 }
 
+async function getTrip(tripId) {
+  const params = {
+    TableName: TripsTableName,
+    Key: {
+      trip_id: tripId
+    },
+    ProjectionExpression: 'current_point, route_points'
+  };
+  const data = await dynamoDB.get(params).promise();
+  return data.Item;
+}
+
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
 
+  const trip = await getTrip(tripId);
+
+  if (trip.current_point + 1 === trip.route_points.length) {
+    return {
+      statusCode: 409,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'forward',
+        success: false,
+        resource: 'trip',
+        resource_id: tripId,
+        message: 'Already at the last route point'
+      })
+    };
+  }
+
   const result = await forwardTrip(tripId, userId);
-  const responseBody = {
-    action: 'forward',
-    success: true,
-    resource: 'trip',
-    resource_id: tripId,
-    next_point: result.current_point + 1 < result.route_points.length
-      ? result.route_points[result.current_point + 1]
-      : null
-  };
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+    body: JSON.stringify({
+      action: 'forward',
+      success: true,
+      resource: 'trip',
+      resource_id: tripId,
+      next_point: result.current_point + 1 < result.route_points.length
+        ? result.route_points[result.current_point + 1]
+        : null
+    })
   };
 };
