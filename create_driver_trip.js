@@ -134,7 +134,7 @@ exports.handler = async (event) => {
     || !user.user_verifications.driver_license.back
   ) {
     return {
-      statusCode: 401,
+      statusCode: 400,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({
         action: 'create',
