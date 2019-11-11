@@ -62,28 +62,43 @@ function imgUserHash(users) {
   const info = {};
   for (let i = 0; i < users.length; i += 1) {
     if (!users[i].user_verifications.selfie_image_checked) {
-      info[users[i].user_identifications.selfie_image] = { user_id: users[i].user_id };
+      info[users[i].user_identifications.selfie_image] = {
+        user_id: users[i].user_id,
+        field: 'selfie_image'
+      };
     }
     if (!users[i].user_verifications.identification.front_checked) {
-      info[users[i].user_identifications.identification.front] = { user_id: users[i].user_id };
+      info[users[i].user_identifications.identification.front] = {
+        user_id: users[i].user_id,
+        field: 'identification-front'
+      };
     }
     if (!users[i].user_verifications.identification.back_checked) {
-      info[users[i].user_identifications.identification.back] = { user_id: users[i].user_id };
+      info[users[i].user_identifications.identification.back] = {
+        user_id: users[i].user_id,
+        field: 'identification-back'
+      };
     }
     if (users[i].user_identifications.driver_license.front
       && !users[i].user_verifications.driver_license.front_checked) {
-      info[users[i].user_identifications.driver_license.front] = { user_id: users[i].user_id };
+      info[users[i].user_identifications.driver_license.front] = {
+        user_id: users[i].user_id,
+        field: 'driver_license-front'
+      };
     }
     if (users[i].user_identifications.driver_license.back
       && !users[i].user_verifications.driver_license.back_checked) {
-      info[users[i].user_identifications.driver_license.back] = { user_id: users[i].user_id };
+      info[users[i].user_identifications.driver_license.back] = {
+        user_id: users[i].user_id,
+        field: 'driver_license-back'
+      };
     }
   }
   return info;
 }
 
-function parseVerificationUrl(baseUrl, imageId, action, userId) {
-  return `${baseUrl}/${imageId}/${action}?user=${userId}`;
+function parseVerificationUrl(baseUrl, imageId, action, userId, field) {
+  return `${baseUrl}/${imageId}/${action}?user=${userId}&field=${field}`;
 }
 
 function buildImagesReviewCsv(imagesUser, images) {
@@ -91,10 +106,18 @@ function buildImagesReviewCsv(imagesUser, images) {
   for (let i = 0; i < images.length; i += 1) {
     csvLinksHash[images[i].image_id].image_url = images[i].url;
     csvLinksHash[images[i].image_id].verify_url = parseVerificationUrl(
-      ImagesVerificationsBaseUrl, images[i].image_id, 'verify', csvLinksHash[images[i].image_id].user_id
+      ImagesVerificationsBaseUrl,
+      images[i].image_id,
+      'verify',
+      csvLinksHash[images[i].image_id].user_id,
+      csvLinksHash[images[i].image_id].field
     );
     csvLinksHash[images[i].image_id].review_url = parseVerificationUrl(
-      ImagesVerificationsBaseUrl, images[i].image_id, 'review', csvLinksHash[images[i].image_id].user_id
+      ImagesVerificationsBaseUrl,
+      images[i].image_id,
+      'review',
+      csvLinksHash[images[i].image_id].user_id,
+      csvLinksHash[images[i].image_id].field
     );
   }
   const csvRows = Object.values(csvLinksHash).map((v) => `"${v.image_url}";"${v.verify_url}";"${v.review_url}"`);
