@@ -55,6 +55,10 @@ function parseBody(body, user) {
         (body.user_identifications && body.user_identifications.selfie_image)
           ? false
           : user.user_verifications.selfie_image,
+      selfie_image_checked:
+        (body.user_identifications && body.user_identifications.selfie_image)
+          ? false
+          : user.user_verifications.selfie_image_checked,
       identification: {
         front:
           (body.user_identifications
@@ -62,12 +66,24 @@ function parseBody(body, user) {
           && body.user_identifications.identification.front)
             ? false
             : user.user_verifications.identification.front,
+        front_checked:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.front)
+            ? false
+            : user.user_verifications.identification.front_checked,
         back:
           (body.user_identifications
           && body.user_identifications.identification
           && body.user_identifications.identification.back)
             ? false
-            : user.user_verifications.identification.back
+            : user.user_verifications.identification.back,
+        back_checked:
+          (body.user_identifications
+          && body.user_identifications.identification
+          && body.user_identifications.identification.back)
+            ? false
+            : user.user_verifications.identification.back_checked
       },
       driver_license: {
         front:
@@ -76,12 +92,24 @@ function parseBody(body, user) {
           && body.user_identifications.driver_license.front)
             ? false
             : user.user_verifications.driver_license.front,
+        front_checked:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.front)
+            ? false
+            : user.user_verifications.driver_license.front_checked,
         back:
           (body.user_identifications
           && body.user_identifications.driver_license
           && body.user_identifications.driver_license.back)
             ? false
-            : user.user_verifications.driver_license.back
+            : user.user_verifications.driver_license.back,
+        back_checked:
+          (body.user_identifications
+          && body.user_identifications.driver_license
+          && body.user_identifications.driver_license.back)
+            ? false
+            : user.user_verifications.driver_license.back_checked
       }
     },
     user_identifications: {
