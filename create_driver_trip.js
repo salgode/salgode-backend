@@ -4,7 +4,7 @@ const moment = require('moment');
 
 const PlacesTableName = process.env.dynamodb_places_table_name;
 const TripsTableName = process.env.dynamodb_trips_table_name;
-const UsersTableName = process.env.dynamodb_users_table_name;
+// const UsersTableName = process.env.dynamodb_users_table_name;
 const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
@@ -49,17 +49,17 @@ function alreadyPassed(time) {
   return moment(time) < moment();
 }
 
-async function getUser(userId) {
-  const params = {
-    TableName: UsersTableName,
-    Key: {
-      user_id: userId
-    },
-    ProjectionExpression: 'user_verifications.driver_license'
-  };
-  const data = await dynamoDB.get(params).promise();
-  return data.Item;
-}
+// async function getUser(userId) {
+//   const params = {
+//     TableName: UsersTableName,
+//     Key: {
+//       user_id: userId
+//     },
+//     ProjectionExpression: 'user_verifications.driver_license'
+//   };
+//   const data = await dynamoDB.get(params).promise();
+//   return data.Item;
+// }
 
 async function getVehicle(vehicleId) {
   const params = {
@@ -128,22 +128,22 @@ exports.handler = async (event) => {
     };
   }
 
-  const user = await getUser(userId);
-  if (
-    !user.user_verifications.driver_license.front
-    || !user.user_verifications.driver_license.back
-  ) {
-    return {
-      statusCode: 400,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({
-        action: 'create',
-        success: false,
-        resource: 'trip',
-        message: 'Missing driver license verification'
-      })
-    };
-  }
+  // const user = await getUser(userId);
+  // if (
+  //   !user.user_verifications.driver_license.front
+  //   || !user.user_verifications.driver_license.back
+  // ) {
+  //   return {
+  //     statusCode: 400,
+  //     headers: { 'Access-Control-Allow-Origin': '*' },
+  //     body: JSON.stringify({
+  //       action: 'create',
+  //       success: false,
+  //       resource: 'trip',
+  //       message: 'Missing driver license verification'
+  //     })
+  //   };
+  // }
 
   const tripId = await createTrip(
     userId, vehicleId, availableSeats, etdInfo, routePoints
