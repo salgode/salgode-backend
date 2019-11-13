@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/salgode/salgode-backend/compare/v1.1.0...v1.2.0) (2019-11-13)
+
+
+### Bug Fixes
+
+* **create_driver_trip:** bad request status code ([61ebea9](https://github.com/salgode/salgode-backend/commit/61ebea9))
+* filter completed trips ([f1744c1](https://github.com/salgode/salgode-backend/commit/f1744c1))
+
+
+### Features
+
+* **authorizer:** restrict users with no email verification ([0e4e379](https://github.com/salgode/salgode-backend/commit/0e4e379))
+* **create_driver_trip:** add robustness against unexistent resources ([4424fb8](https://github.com/salgode/salgode-backend/commit/4424fb8))
+* **create_driver_trip:** allow without driver license verification ([e56208c](https://github.com/salgode/salgode-backend/commit/e56208c))
+* **create_driver_trip:** forbid without verified driver license ([3ccddf8](https://github.com/salgode/salgode-backend/commit/3ccddf8))
+* **create_driver_trip:** remove driver license validation ([ebf6ec3](https://github.com/salgode/salgode-backend/commit/ebf6ec3))
+* **create_driver_trip:** validate driver license verified ([3fbc4b3](https://github.com/salgode/salgode-backend/commit/3fbc4b3))
+* **download_unverified_images:** add endpoint for manual image verification ([d219862](https://github.com/salgode/salgode-backend/commit/d219862))
+* **download_unverified_images:** add field parameter ([bf0db6b](https://github.com/salgode/salgode-backend/commit/bf0db6b))
+* **forward_driver_trip:** validate trip consistency ([74d1b38](https://github.com/salgode/salgode-backend/commit/74d1b38))
+* **get_driver_trip:** send current point ([1e2b206](https://github.com/salgode/salgode-backend/commit/1e2b206))
+* **review_user_image:** add image manual review endpoint ([c69bc82](https://github.com/salgode/salgode-backend/commit/c69bc82))
+* **start_driver_trip:** validate no in progress trip ([9e3c3c9](https://github.com/salgode/salgode-backend/commit/9e3c3c9))
+* **user:** add check images field ([85d0aea](https://github.com/salgode/salgode-backend/commit/85d0aea))
+* **verify_user_image:** add image manual verification endpoint ([cef754c](https://github.com/salgode/salgode-backend/commit/cef754c))
+
 ## [1.1.0](https://github.com/salgode/salgode-backend/compare/v1.0.0...v1.1.0) (2019-11-07)
 
 
