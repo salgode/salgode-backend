@@ -127,7 +127,7 @@ async function createUser(
                   }
                 },
                 user_verifications: {
-                  email: false,
+                  email: true,
                   phone: false,
                   selfie_image: false,
                   selfie_image_checked: false,
@@ -175,7 +175,7 @@ async function createUser(
 
 exports.handler = async (event) => {
   const body = JSON.parse(event.body);
-  const userEmail = body.email;
+  const userEmail = body.email.toLowerCase();
   const userPassword = body.password;
   const firstName = body.first_name;
   const lastName = body.last_name;
