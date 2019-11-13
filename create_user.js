@@ -108,20 +108,13 @@ async function createUser(
               TableName: UsersTableName,
               Item: {
                 user_id: userId,
+                bearer_token: bearerToken,
                 email: userEmail,
                 email_token: emailToken,
                 password_hash: passwordHash,
-                bearer_token: bearerToken,
                 first_name: firstName,
                 last_name: lastName,
                 phone: userPhone,
-                user_verifications: {
-                  email: false,
-                  phone: false,
-                  selfie_image: false,
-                  identification: { front: false, back: false },
-                  driver_license: { front: false, back: false }
-                },
                 user_identifications: {
                   selfie_image: userIdentifications.selfie_image || null,
                   identification: {
@@ -131,6 +124,24 @@ async function createUser(
                   driver_license: {
                     front: userIdentifications.driver_license_image_front || null,
                     back: userIdentifications.driver_license_image_back || null
+                  }
+                },
+                user_verifications: {
+                  email: false,
+                  phone: false,
+                  selfie_image: false,
+                  selfie_image_checked: false,
+                  identification: {
+                    front: false,
+                    front_checked: false,
+                    back: false,
+                    back_checked: false
+                  },
+                  driver_license: {
+                    front: false,
+                    front_checked: false,
+                    back: false,
+                    back_checked: false
                   }
                 },
                 vehicles: [],

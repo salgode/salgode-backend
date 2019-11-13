@@ -185,14 +185,16 @@ async function singleReservationResponse(reservationId) {
 exports.handler = async (event) => {
   const userId = event.requestContext.authorizer.user_id;
   const reservations = await getReservationsForUser(userId);
-  const response = [];
+  const responseRaw = [];
 
   for (let i = 0; i < reservations.length; i += 1) {
     const singleReservationId = reservations[i].reservation_id;
     // eslint-disable-next-line no-await-in-loop
     const singleReservation = await singleReservationResponse(singleReservationId);
-    response.push(singleReservation);
+    responseRaw.push(singleReservation);
   }
+
+  const response = responseRaw.filter((t) => t.trip_status !== 'completed');
 
   return {
     statusCode: 200,
