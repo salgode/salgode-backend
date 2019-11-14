@@ -127,7 +127,7 @@ async function createUser(
                   }
                 },
                 user_verifications: {
-                  email: true,
+                  email: false,
                   phone: false,
                   selfie_image: false,
                   selfie_image_checked: false,
