@@ -112,7 +112,7 @@ async function getPlaces(placeIds) {
       [PlacesTableName]: {
         Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
-          'place_id, place_name',
+          'place_id, place_name, lat, lon',
         ConsistentRead: false
       }
     }

@@ -66,7 +66,7 @@ async function getPlaces(placeIds) {
       [PlacesTableName]: {
         Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
-          'place_id, place_name'
+          'place_id, place_name, lat, lon'
       }
     }
   };
@@ -79,7 +79,12 @@ function getRoutePlace(routePoints, places) {
   let place;
   for (let i = 0; i < routePoints.length; i += 1) {
     place = places.find((p) => routePoints[i] === p.place_id);
-    routePlace.push(place);
+    routePlace.push({
+      place_id: place.place_id,
+      place_name: place.place_name,
+      lat: place.lat.toString(10),
+      lon: place.lon.toString(10)
+    });
   }
   return routePlace;
 }
@@ -89,15 +94,29 @@ function mergeItems(trips, driverSelf, vehicles, places) {
   let routePlace;
   let vehicle;
   let currentPoint;
+  let startPlaceRaw;
   let startPlace;
+  let endPlaceRaw;
   let endPlace;
   for (let i = 0; i < trips.length; i += 1) {
     vehicle = vehicles.find((v) => trips[i].vehicle_id === v.vehicle_id);
     routePlace = getRoutePlace(trips[i].route_points, places);
-    startPlace = places.find((p) => trips[i].route_points[0] === p.place_id);
-    endPlace = places.find(
+    startPlaceRaw = places.find((p) => trips[i].route_points[0] === p.place_id);
+    startPlace = {
+      place_id: startPlaceRaw.place_id,
+      place_name: startPlaceRaw.place_name,
+      lat: startPlaceRaw.lat.toString(10),
+      lon: startPlaceRaw.lon.toString(10)
+    };
+    endPlaceRaw = places.find(
       (p) => trips[i].route_points[trips[i].route_points.length - 1] === p.place_id
     );
+    endPlace = {
+      place_id: endPlaceRaw.place_id,
+      place_name: endPlaceRaw.place_name,
+      lat: endPlaceRaw.lat.toString(10),
+      lon: endPlaceRaw.lon.toString(10)
+    };
     currentPoint = places.find((p) => trips[i].current_point === p.place_id);
     parsedTrips.push({
       trip_id: trips[i].trip_id,
