@@ -1,9 +1,15 @@
 const aws = require('aws-sdk');
 
-const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
-const UsersTableName = process.env.dynamodb_users_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+let ImagesTableName = process.env.dynamodb_images_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  ImagesTableName = `Dev_${process.env.dynamodb_images_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -50,6 +56,7 @@ async function getVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
 
   const result = await getUser(userId);

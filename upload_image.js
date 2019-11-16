@@ -2,6 +2,12 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
+let ImagesTableName = process.env.dynamodb_table_name;
+
+function stagingOverwrite() {
+  ImagesTableName = `Dev_${process.env.dynamodb_table_name}`;
+}
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 const s3 = new aws.S3({
@@ -27,7 +33,7 @@ async function getImageId(folderName, fileName) {
   const imageId = `img_${uuidv4()}`;
   const createAt = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   const params = {
-    TableName: process.env.dynamodb_table_name,
+    TableName: ImagesTableName,
     Item: {
       image_id: imageId,
       folder_name: folderName,
@@ -44,6 +50,7 @@ async function getImageId(folderName, fileName) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const fileName = uuidv4() + event.file_name;
   const fileType = event.file_type;
   const folderName = uuidv4();

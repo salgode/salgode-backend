@@ -2,12 +2,17 @@ const aws = require('aws-sdk');
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-const VehicleTableName = process.env.dynamodb_vehicles_table_name;
-const UserTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+
+function stagingOverwrite() {
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 async function getUserVehicle(userId, vehicleId) {
   const params = {
-    TableName: UserTableName,
+    TableName: UsersTableName,
     Key: {
       user_id: userId
     },
@@ -23,7 +28,7 @@ async function getUserVehicle(userId, vehicleId) {
 
 async function deleteUserVehicle(vehicleId) {
   const params = {
-    TableName: VehicleTableName,
+    TableName: VehiclesTableName,
     Key: {
       vehicle_id: vehicleId
     }
@@ -33,6 +38,7 @@ async function deleteUserVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const vehicleId = event.pathParameters.vehicle;
   const userId = event.requestContext.authorizer.user_id;
   const userVehicle = await getUserVehicle(userId, vehicleId);
