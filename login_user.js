@@ -56,7 +56,7 @@ async function getImageUrl(imageId) {
 
 exports.handler = async (event) => {
   const body = JSON.parse(event.body);
-  const loginEmail = body.email;
+  const loginEmail = body.email.toLowerCase();
   const loginPassword = body.password;
   const userFromDb = await getUserFromLogin(loginEmail);
 

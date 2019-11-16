@@ -130,29 +130,42 @@ async function getFullPlaceInfoFromRoute(placeIds) {
       [PlacesTableName]: {
         Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
-          'place_id, place_name',
-        ConsistentRead: false
+          'place_id, place_name, lat, lon'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
 }
 
 async function formatResponse(reservation, trip) {
+  let place;
   const reservationRouteRaw = await getFullPlaceInfoFromRoute(Object.values(reservation.route));
   const tripRouteRaw = await getFullPlaceInfoFromRoute(trip.route_points);
   const reservationRoute = [];
   const tripRoute = [];
-  reservationRoute.push(
-    reservationRouteRaw.find((rr) => rr.place_id === reservation.route.start)
-  );
-  reservationRoute.push(
-    reservationRouteRaw.find((rr) => rr.place_id === reservation.route.end)
-  );
+  const startPlace = reservationRouteRaw.find((rr) => rr.place_id === reservation.route.start);
+  const endPlace = reservationRouteRaw.find((rr) => rr.place_id === reservation.route.end);
+  reservationRoute.push({
+    place_id: startPlace.place_id,
+    place_name: startPlace.place_name,
+    lat: startPlace.lat.toString(10),
+    lon: startPlace.lon.toString(10)
+  });
+  reservationRoute.push({
+    place_id: endPlace.place_id,
+    place_name: endPlace.place_name,
+    lat: endPlace.lat.toString(10),
+    lon: endPlace.lon.toString(10)
+  });
   for (let i = 0; i < tripRouteRaw.length; i += 1) {
-    tripRoute.push(tripRouteRaw.find((rr) => rr.place_id === trip.route_points[i]));
+    place = tripRouteRaw.find((rr) => rr.place_id === trip.route_points[i]);
+    tripRoute.push({
+      place_id: place.place_id,
+      place_name: place.place_name,
+      lat: place.lat.toString(10),
+      lon: place.lon.toString(10)
+    });
   }
   return {
     reservation_id: reservation.reservation_id,

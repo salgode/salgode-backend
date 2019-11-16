@@ -57,11 +57,9 @@ async function getPlaces(placeIds) {
       [PlacesTableName]: {
         Keys: mapIdKeys(placeIds, 'place_id'),
         ProjectionExpression:
-          'place_id, place_name',
-        ConsistentRead: false
+          'place_id, place_name, lat, lon'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
