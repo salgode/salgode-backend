@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/salgode/salgode-backend/compare/v1.2.0...v1.3.0) (2019-11-16)
+
+
+### Bug Fixes
+
+* **user:** normalize email ([5019587](https://github.com/salgode/salgode-backend/commit/5019587))
+
+
+### Features
+
+* **create_user:** restore email confirmation ([252c93c](https://github.com/salgode/salgode-backend/commit/252c93c))
+* **get_driver_trip:** retrieve places lat and lon ([083d041](https://github.com/salgode/salgode-backend/commit/083d041))
+* **places:** retrieve places lat and lon ([c1c3304](https://github.com/salgode/salgode-backend/commit/c1c3304))
+
 ## [1.2.0](https://github.com/salgode/salgode-backend/compare/v1.1.0...v1.2.0) (2019-11-13)
 
 
