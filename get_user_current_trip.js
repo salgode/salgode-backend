@@ -1,14 +1,22 @@
 const aws = require('aws-sdk');
 
-const dynamoDB = new aws.DynamoDB.DocumentClient();
-
 const PlacesTableName = process.env.dynamodb_places_table_name;
-const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
-const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
-const UsersTableName = process.env.dynamodb_users_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
+
+const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 function mapTripKeys(tripsIds) {
   return tripsIds.map((tripId) => ({
@@ -110,6 +118,7 @@ async function getVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
 
   let trips = await getTripsByDriver(userId);
