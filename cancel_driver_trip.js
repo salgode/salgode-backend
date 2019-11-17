@@ -9,26 +9,25 @@ function stagingOverwrite() {
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
-async function forwardTrip(tripId, userId) {
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
-  const expectedStatus = 'in_progress';
+async function cancelTrip(tripId, userId) {
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
   const params = {
     TableName: TripsTableName,
     Key: {
       trip_id: tripId
     },
-    UpdateExpression: 'set current_point = current_point + :val, updated_at = :now',
-    ConditionExpression: 'trip_status = :expectedStatus and driver_id = :self',
+    UpdateExpression:
+      'set trip_status = :newStatus, updated_at = :now',
+    ConditionExpression:
+      'trip_status = :expectedStatus and driver_id = :self',
     ExpressionAttributeValues: {
-      ':val': 1,
+      ':newStatus': 'canceled',
       ':now': timestamp,
       ':self': userId,
-      ':expectedStatus': expectedStatus
-    },
-    ReturnValues: 'ALL_NEW'
+      ':expectedStatus': 'open'
+    }
   };
-  const data = await dynamoDB.update(params).promise();
-  return data.Attributes;
+  return dynamoDB.update(params).promise();
 }
 
 async function getTrip(tripId) {
@@ -37,7 +36,7 @@ async function getTrip(tripId) {
     Key: {
       trip_id: tripId
     },
-    ProjectionExpression: 'driver_id, current_point, route_points'
+    ProjectionExpression: 'driver_id'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -55,7 +54,7 @@ exports.handler = async (event) => {
       statusCode: 401,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({
-        action: 'forward',
+        action: 'cancel',
         success: false,
         resource: 'trip',
         message: 'Unauthorized'
@@ -63,32 +62,28 @@ exports.handler = async (event) => {
     };
   }
 
-  if (trip.current_point + 1 === trip.route_points.length) {
+  try {
+    await cancelTrip(tripId, userId);
+  } catch (err) {
     return {
       statusCode: 409,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({
-        action: 'forward',
+        action: 'cancel',
         success: false,
         resource: 'trip',
-        resource_id: tripId,
-        message: 'Already at the last route point'
+        resource_id: tripId
       })
     };
   }
-
-  const result = await forwardTrip(tripId, userId);
   return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify({
-      action: 'forward',
+      action: 'cancel',
       success: true,
       resource: 'trip',
-      resource_id: tripId,
-      next_point: result.current_point + 1 < result.route_points.length
-        ? result.route_points[result.current_point + 1]
-        : null
+      resource_id: tripId
     })
   };
 };

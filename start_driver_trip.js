@@ -1,8 +1,12 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
 
-const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+
+function stagingOverwrite() {
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -53,6 +57,7 @@ async function getTripInProgress(userId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
   const tripId = event.pathParameters.trip;
 
