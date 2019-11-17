@@ -2,9 +2,14 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
-const ReservationsTableName = process.env.dynamodb_reservations_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
-const TripsTableName = process.env.dynamodb_trips_table_name;
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -69,13 +74,14 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
         ]
       })
       .promise();
-    return { reservation_id: reservationId, reservation_status: reservationStatus };
+    return reservationId;
   } catch (e) {
     return false;
   }
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
   const tripId = body.trip_id;
@@ -112,29 +118,28 @@ exports.handler = async (event) => {
     };
   }
 
-  const result = await createTripReservation(tripId, userId, reservedSeats, routeObj);
+  const reservationId = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
-  if (result) {
-    const responseBody = {
-      action: 'create',
-      success: true,
-      resource: 'reservation',
-      resource_id: result.reservation_id
-    };
+  if (reservationId) {
     return {
       statusCode: 201,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
+      body: JSON.stringify({
+        action: 'create',
+        success: true,
+        resource: 'reservation',
+        resource_id: reservationId
+      })
     };
   }
-  const responseBody = {
-    action: 'create',
-    success: false,
-    resource: 'reservation'
-  };
   return {
     statusCode: 409,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+    body: JSON.stringify({
+      action: 'create',
+      success: false,
+      resource: 'reservation',
+      message: 'Wrong or missing parameters'
+    })
   };
 };

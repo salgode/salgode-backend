@@ -1,8 +1,13 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
 
-const ReservationsTableName = process.env.dynamodb_reservations_table_name;
-const TripsTableName = process.env.dynamodb_trips_table_name;
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -63,6 +68,7 @@ async function acceptReservation(reservedSeats, reservationId, tripId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const tripId = event.pathParameters.trip;
   const reservationId = event.pathParameters.reservation;
   const reservedSeats = await getReservedSeats(reservationId);

@@ -1,16 +1,28 @@
 const aws = require('aws-sdk');
 
+const PlacesTableName = process.env.dynamodb_places_table_name;
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
-const PlacesTableName = process.env.dynamodb_table_name_places;
 
 async function getReservation(reservationId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_reservations,
+    TableName: ReservationsTableName,
     Key: {
       reservation_id: reservationId
     },
     ProjectionExpression:
-      'reservation_id, reserved_seats, route, reservation_status, trip_id'
+      'passenger_id, reservation_id, reserved_seats, route, reservation_status, trip_id'
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -18,7 +30,7 @@ async function getReservation(reservationId) {
 
 async function getTrip(tripId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_trips,
+    TableName: TripsTableName,
     Key: {
       trip_id: tripId
     },
@@ -31,7 +43,7 @@ async function getTrip(tripId) {
 
 async function getDriverInformation(driverId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_users,
+    TableName: UsersTableName,
     Key: {
       user_id: driverId
     },
@@ -61,7 +73,7 @@ async function getDriverInformation(driverId) {
 
 async function getVehicleInformation(vehicleId) {
   const params = {
-    TableName: process.env.dynamodb_table_name_vehicles,
+    TableName: VehiclesTableName,
     Key: {
       vehicle_id: vehicleId
     },
@@ -84,11 +96,9 @@ async function getFullPlaceInfoFromReservationRoute(routePlaces) {
       [PlacesTableName]: {
         Keys: [{ place_id: routePlaces.start }, { place_id: routePlaces.end }],
         ProjectionExpression:
-          'place_id, place_name',
-        ConsistentRead: false
+          'place_id, place_name'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[PlacesTableName];
@@ -106,17 +116,26 @@ async function formatResponse(reservation, trip) {
     etd_info: trip.etd_info,
     route: trip.route,
     trip_route: {
-      start: tripRoute[0],
-      end: tripRoute[1]
+      start: tripRoute.find((p) => p.place_id === reservation.route.start),
+      end: tripRoute.find((p) => p.place_id === reservation.route.start)
     }
   };
 }
 
 exports.handler = async (event) => {
-  /* Next release - compare the request user id with the reservation user id before returning
-  const userId = event.requestContext.authorizer.user_id; */
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
+  const userId = event.requestContext.authorizer.user_id;
   const reservationId = event.pathParameters.reservation;
   const reservation = await getReservation(reservationId);
+
+  if (reservation.passenger_id !== userId) {
+    return {
+      statusCode: 401,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Unauthorized' })
+    };
+  }
+
   const trip = await getTrip(reservation.trip_id);
   const result = await formatResponse(reservation, trip);
 

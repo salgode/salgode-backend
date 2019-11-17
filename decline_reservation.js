@@ -1,6 +1,12 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
 
+let ReservationsTableName = process.env.dynamodb_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_table_name}`;
+}
+
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
 async function declineReservation(reservationId) {
@@ -8,7 +14,7 @@ async function declineReservation(reservationId) {
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
   try {
     const params = {
-      TableName: process.env.dynamodb_table_name,
+      TableName: ReservationsTableName,
       Key: {
         reservation_id: reservationId
       },
@@ -26,6 +32,7 @@ async function declineReservation(reservationId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const reservationId = event.pathParameters.reservation;
   const result = await declineReservation(reservationId);
 
