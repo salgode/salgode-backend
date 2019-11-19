@@ -21,7 +21,7 @@ async function sendNotification(expoPushToken, tripId) {
   const message = {
     to: expoPushToken,
     sound: 'default',
-    body: 'Tienes una nueva solicitud de viaje! :)',
+    body: 'Tienes una nueva solicitud de viaje! 🎉',
     data: { action: 'request', resource: 'trip', resource_id: tripId }
   };
   try {
