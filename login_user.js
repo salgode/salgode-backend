@@ -70,66 +70,69 @@ async function checkDeviceExists(deviceId) {
 async function updateSession(userId, deviceId, expoPushToken) {
   const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
   const newBearerToken = uuidv4();
-  const deviceAlreadyExists = await checkDeviceExists(deviceId);
-  const params = { TransactItems: [] };
-  params.TransactItems.push({
-    Update: {
-      TableName: UsersTableName,
-      Key: { user_id: userId },
-      UpdateExpression: 'set #bt = :newBearerToken, device_id = :deviceId, #ept = :expoPushToken, #upd = :now',
-      ExpressionAttributeNames: { '#bt': 'bearer_token', '#ept': 'expo_push_token', '#upd': 'updated_at' },
-      ExpressionAttributeValues: {
-        ':newBearerToken': newBearerToken,
-        ':deviceId': deviceId,
-        ':expoPushToken': expoPushToken,
-        ':now': timestamp
-      }
+  const transactParams = { TransactItems: [] };
+  const updateUserParams = {
+    TableName: UsersTableName,
+    Key: { user_id: userId },
+    UpdateExpression: 'set #bt = :newBearerToken, #upd = :now',
+    ExpressionAttributeNames: { '#bt': 'bearer_token', '#upd': 'updated_at' },
+    ExpressionAttributeValues: {
+      ':newBearerToken': newBearerToken,
+      ':now': timestamp
     }
-  });
-  if (deviceAlreadyExists) {
-    const device = deviceAlreadyExists;
-    if (device.user_id && device.user_id !== userId) {
-      params.TransactItems.push({
+  };
+  if (deviceId && expoPushToken) {
+    updateUserParams.UpdateExpression += ', device_id = :deviceId, #ept = :expoPushToken';
+    updateUserParams.ExpressionAttributeNames['#ept'] = 'expo_push_token';
+    updateUserParams.ExpressionAttributeValues[':deviceId'] = deviceId;
+    updateUserParams.ExpressionAttributeValues[':expoPushToken'] = expoPushToken;
+    const deviceAlreadyExists = await checkDeviceExists(deviceId);
+    if (deviceAlreadyExists) {
+      const device = deviceAlreadyExists;
+      if (device.user_id && device.user_id !== userId) {
+        transactParams.TransactItems.push({
+          Update: {
+            TableName: UsersTableName,
+            Key: { user_id: device.user_id },
+            UpdateExpression: 'set #bt = :forceLogin, device_id = :null, #ept = :null, #upd = :now',
+            ExpressionAttributeNames: {
+              '#bt': 'bearer_token',
+              '#ept': 'expo_push_token',
+              '#upd': 'updated_at'
+            },
+            ExpressionAttributeValues: { ':forceLogin': uuidv4(), ':null': null, ':now': timestamp }
+          }
+        });
+      }
+      transactParams.TransactItems.push({
         Update: {
-          TableName: UsersTableName,
-          Key: { user_id: device.user_id },
-          UpdateExpression: 'set #bt = :forceLogin, device_id = :null, #ept = :null, #upd = :now',
-          ExpressionAttributeNames: {
-            '#bt': 'bearer_token',
-            '#ept': 'expo_push_token',
-            '#upd': 'updated_at'
-          },
-          ExpressionAttributeValues: { ':forceLogin': uuidv4(), ':null': null, ':now': timestamp }
+          TableName: DevicesTableName,
+          Key: { device_id: deviceId },
+          UpdateExpression: 'set user_id = :userId, expo_push_token = :expoPushToken, updated_at = :now',
+          ExpressionAttributeValues: {
+            ':userId': userId,
+            ':expoPushToken': expoPushToken,
+            ':now': timestamp
+          }
+        }
+      });
+    } else {
+      transactParams.TransactItems.push({
+        Put: {
+          TableName: DevicesTableName,
+          Item: {
+            device_id: deviceId,
+            user_id: userId,
+            expo_push_token: expoPushToken,
+            created_at: timestamp,
+            updated_at: timestamp
+          }
         }
       });
     }
-    params.TransactItems.push({
-      Update: {
-        TableName: DevicesTableName,
-        Key: { device_id: deviceId },
-        UpdateExpression: 'set user_id = :userId, expo_push_token = :expoPushToken, updated_at = :now',
-        ExpressionAttributeValues: {
-          ':userId': userId,
-          ':expoPushToken': expoPushToken,
-          ':now': timestamp
-        }
-      }
-    });
-  } else {
-    params.TransactItems.push({
-      Put: {
-        TableName: DevicesTableName,
-        Item: {
-          device_id: deviceId,
-          user_id: userId,
-          expo_push_token: expoPushToken,
-          created_at: timestamp,
-          updated_at: timestamp
-        }
-      }
-    });
   }
-  await dynamoDB.transactWrite(params).promise();
+  transactParams.TransactItems.push({ Update: updateUserParams });
+  await dynamoDB.transactWrite(transactParams).promise();
   return newBearerToken;
 }
 
