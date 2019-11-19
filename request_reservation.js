@@ -26,7 +26,10 @@ async function sendNotification(expoPushToken, tripId) {
   };
   try {
     const ticketChunk = await expo.sendPushNotificationsAsync([message]);
+    return ticketChunk;
   } catch (error) {
+    console.error(error); // eslint-disable-line no-console
+    return false;
   }
 }
 
