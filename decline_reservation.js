@@ -1,13 +1,50 @@
 const aws = require('aws-sdk');
 const moment = require('moment');
+const { Expo } = require('expo-server-sdk');
 
-let ReservationsTableName = process.env.dynamodb_table_name;
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
 
 function stagingOverwrite() {
-  ReservationsTableName = `Dev_${process.env.dynamodb_table_name}`;
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
 }
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
+const expo = new Expo();
+
+async function sendNotification(expoPushToken) {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    body: 'El conductor no puede llevarte :(',
+    data: { action: 'decline', resource: 'trip' }
+  };
+  try {
+    const ticketChunk = await expo.sendPushNotificationsAsync([message]);
+    return ticketChunk;
+  } catch (error) {
+    console.error(error); // eslint-disable-line no-console
+    return false;
+  }
+}
+
+async function notifyPassenger(reservationId) {
+  const reservationData = await dynamoDB.get({
+    TableName: ReservationsTableName,
+    Key: { reservation_id: reservationId },
+    ProjectionExpression: 'passenger_id'
+  }).promise();
+  const passengerId = reservationData.Item.passenger_id;
+  const passengerData = await dynamoDB.get({
+    TableName: UsersTableName,
+    Key: { user_id: passengerId },
+    ProjectionExpression: 'expo_push_token'
+  }).promise();
+  const expoPushToken = passengerData.Item.expo_push_token;
+  const result = await sendNotification(expoPushToken);
+  return result;
+}
 
 async function declineReservation(reservationId) {
   const updatedStatus = 'declined';
@@ -36,22 +73,29 @@ exports.handler = async (event) => {
   const reservationId = event.pathParameters.reservation;
   const result = await declineReservation(reservationId);
 
-  if (result) {
-    const responseBody = {
+  if (!result) {
+    return {
+      statusCode: 409,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'decline',
+        success: false,
+        resource: 'reservation',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
+  await notifyPassenger(reservationId);
+
+  return {
+    statusCode: 200,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({
       action: 'decline',
       success: true,
       resource: 'reservation',
       resource_id: reservationId
-    };
-    return {
-      statusCode: 200,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
-    };
-  }
-  return {
-    statusCode: 409,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ declined: false })
+    })
   };
 };

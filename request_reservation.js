@@ -1,17 +1,51 @@
 const aws = require('aws-sdk');
-const uuidv4 = require('uuid/v4');
 const moment = require('moment');
+const uuidv4 = require('uuid/v4');
+const { Expo } = require('expo-server-sdk');
 
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
 let ReservationsTableName = process.env.dynamodb_reservations_table_name;
 let TripsTableName = process.env.dynamodb_trips_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
 
 function stagingOverwrite() {
   ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
   TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
 }
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
+const expo = new Expo();
+
+async function sendNotification(expoPushToken, tripId) {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    body: 'Tienes una nueva solicitud de viaje! :)',
+    data: { action: 'request', resource: 'trip', resource_id: tripId }
+  };
+  try {
+    const ticketChunk = await expo.sendPushNotificationsAsync([message]);
+  } catch (error) {
+  }
+}
+
+async function notifyDriver(tripId) {
+  const tripData = await dynamoDB.get({
+    TableName: TripsTableName,
+    Key: { trip_id: tripId },
+    ProjectionExpression: 'driver_id'
+  }).promise();
+  const driverId = tripData.Item.driver_id;
+  const driverData = await dynamoDB.get({
+    TableName: UsersTableName,
+    Key: { user_id: driverId },
+    ProjectionExpression: 'expo_push_token'
+  }).promise();
+  const expoPushToken = driverData.Item.expo_push_token;
+  const result = await sendNotification(expoPushToken, tripId);
+  return result;
+}
 
 async function checkDuplicated(tripId, userId) {
   const params = {
@@ -41,9 +75,7 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
           {
             ConditionCheck: {
               TableName: TripsTableName,
-              Key: {
-                trip_id: tripId
-              },
+              Key: { trip_id: tripId },
               ConditionExpression: 'available_seats >= :reserved_seats and driver_id <> :selfId',
               ExpressionAttributeValues: {
                 ':reserved_seats': reservedSeats,
@@ -120,26 +152,29 @@ exports.handler = async (event) => {
 
   const reservationId = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
-  if (reservationId) {
+  if (!reservationId) {
     return {
-      statusCode: 201,
+      statusCode: 409,
       headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({
         action: 'create',
-        success: true,
+        success: false,
         resource: 'reservation',
-        resource_id: reservationId
+        message: 'Wrong or missing parameters'
       })
     };
   }
+
+  await notifyDriver(tripId);
+
   return {
-    statusCode: 409,
+    statusCode: 201,
     headers: { 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify({
       action: 'create',
-      success: false,
+      success: true,
       resource: 'reservation',
-      message: 'Wrong or missing parameters'
+      resource_id: reservationId
     })
   };
 };
