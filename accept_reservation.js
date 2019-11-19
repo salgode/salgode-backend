@@ -15,12 +15,12 @@ function stagingOverwrite() {
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 const expo = new Expo();
 
-async function sendNotification(expoPushToken, tripId) {
+async function sendNotification(expoPushToken, reservationId) {
   const message = {
     to: expoPushToken,
     sound: 'default',
     body: 'Tu solicitud ha sido aceptada! :)',
-    data: { action: 'accept', resource: 'trip', resource_id: tripId }
+    data: { action: 'accept', resource: 'resevation', resource_id: reservationId }
   };
   try {
     const ticketChunk = await expo.sendPushNotificationsAsync([message]);
@@ -31,7 +31,7 @@ async function sendNotification(expoPushToken, tripId) {
   }
 }
 
-async function notifyPassenger(reservationId, tripId) {
+async function notifyPassenger(reservationId) {
   const reservationData = await dynamoDB.get({
     TableName: ReservationsTableName,
     Key: { reservation_id: reservationId },
@@ -44,7 +44,7 @@ async function notifyPassenger(reservationId, tripId) {
     ProjectionExpression: 'expo_push_token'
   }).promise();
   const expoPushToken = passengerData.Item.expo_push_token;
-  const result = await sendNotification(expoPushToken, tripId);
+  const result = await sendNotification(expoPushToken, reservationId);
   return result;
 }
 
@@ -113,7 +113,7 @@ exports.handler = async (event) => {
     };
   }
 
-  await notifyPassenger(reservationId, tripId);
+  await notifyPassenger(reservationId);
 
   return {
     statusCode: 200,

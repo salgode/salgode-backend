@@ -18,7 +18,7 @@ async function sendNotification(expoPushToken) {
     to: expoPushToken,
     sound: 'default',
     body: 'El conductor no puede llevarte :(',
-    data: { action: 'decline', resource: 'trip' }
+    data: { action: 'decline', resource: 'reservation' }
   };
   try {
     const ticketChunk = await expo.sendPushNotificationsAsync([message]);
