@@ -127,9 +127,11 @@ exports.handler = async (event) => {
   // If no trip as driver, check as passenger
   if (trips.length === 0) {
     reservations = await getAcceptedReservations(userId);
-    const tripIds = reservations.map((r) => r.trip_id);
-    trips = await getTripsByIds(tripIds);
-    trips = trips.filter((t) => t.trip_status === 'in_progress');
+    if (reservations.length !== 0) {
+      const tripIds = reservations.map((r) => r.trip_id);
+      trips = await getTripsByIds(tripIds);
+      trips = trips.filter((t) => t.trip_status === 'in_progress');
+    }
   }
 
   // Non empty response
@@ -143,9 +145,7 @@ exports.handler = async (event) => {
 
     const isSelfDriver = userId === theTrip.driver_id;
     const routePoints = theTrip.route_points;
-    const routeStart = theReservation
-      ? theReservation.route.start
-      : routePoints[0];
+    const routeStart = theReservation ? theReservation.route.start : routePoints[0];
     const routeEnd = theReservation
       ? theReservation.route.end
       : routePoints[routePoints.length - 1];
