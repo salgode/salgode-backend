@@ -60,7 +60,7 @@ exports.handler = async (event) => {
 
   const user = await getUser(userId);
 
-  if (!user || !user.expo_push_token || !user.device_id) {
+  if (!user) {
     return {
       statusCode: 403,
       headers: { 'Access-Control-Allow-Origin': '*' },
