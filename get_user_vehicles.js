@@ -47,6 +47,14 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
   const userId = event.requestContext.authorizer.user_id;
   const user = await getUser(userId);
 
+  if (user.vehicles.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ vehicles: [] })
+    };
+  }
+
   const vehiclesRaw = await getVehicleByIds(user.vehicles);
   const vehicles = vehiclesRaw.map((v) => ({
     vehicle_id: v.vehicle_id,
@@ -60,10 +68,9 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
     vehicle_attributes: v.vehicle_attributes,
     vehicle_identifications: v.vehicle_identifications
   }));
-  const response = {
+  return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify({ vehicles })
   };
-  return response;
 };
