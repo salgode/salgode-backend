@@ -94,13 +94,13 @@ async function updateSession(userId, deviceId, expoPushToken) {
           Update: {
             TableName: UsersTableName,
             Key: { user_id: device.user_id },
-            UpdateExpression: 'set #bt = :forceLogin, device_id = :null, #ept = :null, #upd = :now',
+            UpdateExpression: 'set #bt = :forceLogin, device_id = :false, #ept = :false, #upd = :now',
             ExpressionAttributeNames: {
               '#bt': 'bearer_token',
               '#ept': 'expo_push_token',
               '#upd': 'updated_at'
             },
-            ExpressionAttributeValues: { ':forceLogin': uuidv4(), ':null': null, ':now': timestamp }
+            ExpressionAttributeValues: { ':forceLogin': uuidv4(), ':false': false, ':now': timestamp }
           }
         });
       }
@@ -163,7 +163,7 @@ exports.handler = async (event) => {
   const identFrontUrl = userIdentifs[idt].front ? await getImgUrl(userIdentifs[idt].front) : null;
   const identBackUrl = userIdentifs[idt].back ? await getImgUrl(userIdentifs[idt].back) : null;
   const driverFrontUrl = userIdentifs[dl].front ? await getImgUrl(userIdentifs[dl].front) : null;
-  const driverBackUrl = userIdentifs[dl].back ? await getImgUrl(userIdentifs.back) : null;
+  const driverBackUrl = userIdentifs[dl].back ? await getImgUrl(userIdentifs[dl].back) : null;
 
   return {
     statusCode: 200,
