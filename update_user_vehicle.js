@@ -2,8 +2,13 @@ const aws = require('aws-sdk');
 const uuidv4 = require('uuid/v4');
 const moment = require('moment');
 
-const EventsTableName = process.env.dynamodb_events_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+let EventsTableName = process.env.dynamodb_events_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  EventsTableName = `Dev_${process.env.dynamodb_events_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -89,6 +94,7 @@ async function updateVehicle(userId, vehicleId, updateParams, rawData) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
 
   const vehicleId = event.pathParameters.vehicle;

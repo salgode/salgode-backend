@@ -1,10 +1,16 @@
 const aws = require('aws-sdk');
 
-const TripsTableName = process.env.dynamodb_trips_table_name;
 const TripsIndexName = process.env.dynamodb_trips_index_name;
-const UsersTableName = process.env.dynamodb_users_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
 const PlacesTableName = process.env.dynamodb_places_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -153,6 +159,7 @@ function mergeItems(trips, driverSelf, vehicles, places) {
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
   const trips = await getTripAsDriver(userId);
 

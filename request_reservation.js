@@ -1,12 +1,55 @@
 const aws = require('aws-sdk');
-const uuidv4 = require('uuid/v4');
 const moment = require('moment');
+const uuidv4 = require('uuid/v4');
+const { Expo } = require('expo-server-sdk');
 
-const ReservationsTableName = process.env.dynamodb_reservations_table_name;
+const ReceiptsTableName = process.env.dynamodb_receipts_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
-const TripsTableName = process.env.dynamodb_trips_table_name;
+let ReservationsTableName = process.env.dynamodb_reservations_table_name;
+let TripsTableName = process.env.dynamodb_trips_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+
+function stagingOverwrite() {
+  ReservationsTableName = `Dev_${process.env.dynamodb_reservations_table_name}`;
+  TripsTableName = `Dev_${process.env.dynamodb_trips_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
+const expo = new Expo();
+
+async function sendNotification(expoPushToken, tripId) {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    body: 'Tienes una nueva solicitud de viaje! 🎉',
+    data: { action: 'request', resource: 'trip', resource_id: tripId }
+  };
+  try {
+    const ticket = await expo.sendPushNotificationsAsync([message]);
+    return ticket;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function notifyDriver(tripId) {
+  const tripData = await dynamoDB.get({
+    TableName: TripsTableName,
+    Key: { trip_id: tripId },
+    ProjectionExpression: 'driver_id'
+  }).promise();
+  const driverId = tripData.Item.driver_id;
+  const driverData = await dynamoDB.get({
+    TableName: UsersTableName,
+    Key: { user_id: driverId },
+    ProjectionExpression: 'expo_push_token'
+  }).promise();
+  const expoPushToken = driverData.Item.expo_push_token;
+  if (!expoPushToken) { return false; }
+  const ticket = await sendNotification(expoPushToken, tripId);
+  return ticket;
+}
 
 async function checkDuplicated(tripId, userId) {
   const params = {
@@ -28,7 +71,7 @@ async function checkDuplicated(tripId, userId) {
 async function createTripReservation(tripId, userId, reservedSeats, route) {
   const reservationId = `res_${uuidv4()}`;
   const reservationStatus = 'pending';
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
   try {
     await dynamoDB
       .transactWrite({
@@ -36,9 +79,7 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
           {
             ConditionCheck: {
               TableName: TripsTableName,
-              Key: {
-                trip_id: tripId
-              },
+              Key: { trip_id: tripId },
               ConditionExpression: 'available_seats >= :reserved_seats and driver_id <> :selfId',
               ExpressionAttributeValues: {
                 ':reserved_seats': reservedSeats,
@@ -69,13 +110,29 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
         ]
       })
       .promise();
-    return { reservation_id: reservationId, reservation_status: reservationStatus };
+    return reservationId;
   } catch (e) {
     return false;
   }
 }
 
+async function saveReceipt(receiptId) {
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
+  const params = {
+    TableName: ReceiptsTableName,
+    Item: {
+      receipt_id: receiptId,
+      receipt_type: 'expo_push_notification',
+      checked: false,
+      created_at: timestamp,
+      updated_at: timestamp
+    }
+  };
+  return dynamoDB.put(params).promise();
+}
+
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
   const body = JSON.parse(event.body);
   const tripId = body.trip_id;
@@ -112,29 +169,35 @@ exports.handler = async (event) => {
     };
   }
 
-  const result = await createTripReservation(tripId, userId, reservedSeats, routeObj);
+  const reservationId = await createTripReservation(tripId, userId, reservedSeats, routeObj);
 
-  if (result) {
-    const responseBody = {
+  if (!reservationId) {
+    return {
+      statusCode: 409,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        action: 'create',
+        success: false,
+        resource: 'reservation',
+        message: 'Wrong or missing parameters'
+      })
+    };
+  }
+
+  const tickets = await notifyDriver(tripId);
+  if (tickets && tickets.length && tickets[0].id) {
+    const ticketId = tickets[0].id;
+    await saveReceipt(ticketId);
+  }
+
+  return {
+    statusCode: 201,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({
       action: 'create',
       success: true,
       resource: 'reservation',
-      resource_id: result.reservation_id
-    };
-    return {
-      statusCode: 201,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(responseBody)
-    };
-  }
-  const responseBody = {
-    action: 'create',
-    success: false,
-    resource: 'reservation'
-  };
-  return {
-    statusCode: 409,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify(responseBody)
+      resource_id: reservationId
+    })
   };
 };

@@ -1,7 +1,12 @@
 const aws = require('aws-sdk');
 
-const UsersTableName = process.env.dynamodb_users_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -29,19 +34,26 @@ async function getVehicleByIds(vehiclesIds) {
       [VehiclesTableName]: {
         Keys: mapVehicleKeys(vehiclesIds),
         ProjectionExpression:
-          'vehicle_id, alias, vehicle_attributes, vehicle_identifications',
-        ConsistentRead: false
+          'vehicle_id, alias, vehicle_attributes, vehicle_identifications'
       }
-    },
-    ReturnConsumedCapacity: 'NONE'
+    }
   };
   const data = await dynamoDB.batchGet(params).promise();
   return data.Responses[VehiclesTableName];
 }
 
 exports.handler = async (event) => { // eslint-disable-line no-unused-vars
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
   const user = await getUser(userId);
+
+  if (user.vehicles.length === 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ vehicles: [] })
+    };
+  }
 
   const vehiclesRaw = await getVehicleByIds(user.vehicles);
   const vehicles = vehiclesRaw.map((v) => ({
@@ -56,10 +68,9 @@ exports.handler = async (event) => { // eslint-disable-line no-unused-vars
     vehicle_attributes: v.vehicle_attributes,
     vehicle_identifications: v.vehicle_identifications
   }));
-  const response = {
+  return {
     statusCode: 200,
     headers: { 'Access-Control-Allow-Origin': '*' },
     body: JSON.stringify({ vehicles })
   };
-  return response;
 };

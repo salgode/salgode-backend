@@ -1,9 +1,15 @@
 const aws = require('aws-sdk');
 
-const ImagesTableName = process.env.dynamodb_images_table_name;
 const ImagesBaseUrl = process.env.salgode_images_bucket_base_url;
-const UsersTableName = process.env.dynamodb_users_table_name;
-const VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+let ImagesTableName = process.env.dynamodb_images_table_name;
+let UsersTableName = process.env.dynamodb_users_table_name;
+let VehiclesTableName = process.env.dynamodb_vehicles_table_name;
+
+function stagingOverwrite() {
+  ImagesTableName = `Dev_${process.env.dynamodb_images_table_name}`;
+  UsersTableName = `Dev_${process.env.dynamodb_users_table_name}`;
+  VehiclesTableName = `Dev_${process.env.dynamodb_vehicles_table_name}`;
+}
 
 const dynamoDB = new aws.DynamoDB.DocumentClient();
 
@@ -11,7 +17,7 @@ function parseUrl(baseUrl, folder, file) {
   return `${baseUrl}/${folder}/${file}`;
 }
 
-async function getImageUrl(imageId) {
+async function getImgUrl(imageId) {
   const params = {
     TableName: ImagesTableName,
     Key: {
@@ -29,8 +35,7 @@ async function getUser(userId) {
     TableName: UsersTableName,
     Key: {
       user_id: userId
-    },
-    ProjectionExpression: 'user_id, first_name, last_name, email, phone, user_identifications, user_verifications, vehicles'
+    }
   };
   const data = await dynamoDB.get(params).promise();
   return data.Item;
@@ -50,44 +55,48 @@ async function getVehicle(vehicleId) {
 }
 
 exports.handler = async (event) => {
+  if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const userId = event.requestContext.authorizer.user_id;
 
-  const result = await getUser(userId);
-  if (result) {
-    const myVehicles = await Promise.all(result.vehicles.map((v) => getVehicle(v)));
+  const user = await getUser(userId);
 
-    const selfieUrl = result.user_identifications.selfie_image
-      ? await getImageUrl(result.user_identifications.selfie_image)
-      : null;
-    const identFrontUrl = result.user_identifications.identification.front
-      ? await getImageUrl(result.user_identifications.identification.front)
-      : null;
-    const identBackUrl = result.user_identifications.identification.back
-      ? await getImageUrl(result.user_identifications.identification.back)
-      : null;
-    const driverFrontUrl = result.user_identifications.driver_license.front
-      ? await getImageUrl(result.user_identifications.driver_license.front)
-      : null;
-    const driverBackUrl = result.user_identifications.driver_license.back
-      ? await getImageUrl(result.user_identifications.driver_license.back)
-      : null;
+  if (!user) {
+    return {
+      statusCode: 403,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'Forbidden' })
+    };
+  }
 
-    const response = {
-      user_id: result.user_id,
-      first_name: result.first_name,
-      last_name: result.last_name,
-      email: result.email,
-      phone: result.phone,
+  const myVehicles = await Promise.all(user.vehicles.map((v) => getVehicle(v)));
+
+  const userIdentifs = user.user_identifications;
+  const [idt, dl] = ['identification', 'driver_license'];
+  const selfieUrl = userIdentifs.selfie_image ? await getImgUrl(userIdentifs.selfie_image) : null;
+  const identFrontUrl = userIdentifs[idt].front ? await getImgUrl(userIdentifs[idt].front) : null;
+  const identBackUrl = userIdentifs[idt].back ? await getImgUrl(userIdentifs[idt].back) : null;
+  const driverFrontUrl = userIdentifs[dl].front ? await getImgUrl(userIdentifs[dl].front) : null;
+  const driverBackUrl = userIdentifs[dl].back ? await getImgUrl(userIdentifs[dl].back) : null;
+
+  return {
+    statusCode: 200,
+    headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({
+      user_id: user.user_id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone,
       avatar: selfieUrl,
       user_verifications: {
-        email: result.user_verifications.email,
-        phone: result.user_verifications.phone,
+        email: user.user_verifications.email,
+        phone: user.user_verifications.phone,
         identity:
-          result.user_verifications.identification.front
-          && result.user_verifications.identification.back,
+            user.user_verifications.identification.front
+            && user.user_verifications.identification.back,
         driver_license:
-          result.user_verifications.driver_license.front
-          && result.user_verifications.driver_license.back
+            user.user_verifications.driver_license.front
+            && user.user_verifications.driver_license.back
       },
       user_identifications: {
         selfie: selfieUrl,
@@ -101,16 +110,6 @@ exports.handler = async (event) => {
         }
       },
       vehicles: myVehicles
-    };
-    return {
-      statusCode: 200,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify(response)
-    };
-  }
-  return {
-    statusCode: 403,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ message: 'Service Unavailable' })
+    })
   };
 };
