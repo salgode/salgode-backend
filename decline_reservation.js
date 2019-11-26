@@ -2,6 +2,7 @@ const aws = require('aws-sdk');
 const moment = require('moment');
 const { Expo } = require('expo-server-sdk');
 
+const ReceiptsTableName = process.env.dynamodb_receipts_table_name;
 let ReservationsTableName = process.env.dynamodb_reservations_table_name;
 let UsersTableName = process.env.dynamodb_users_table_name;
 
@@ -17,14 +18,13 @@ async function sendNotification(expoPushToken) {
   const message = {
     to: expoPushToken,
     sound: 'default',
-    body: 'El conductor no puede llevarte :(',
+    body: 'El conductor no puede llevarte 😞',
     data: { action: 'decline', resource: 'reservation' }
   };
   try {
-    const ticketChunk = await expo.sendPushNotificationsAsync([message]);
-    return ticketChunk;
+    const ticket = await expo.sendPushNotificationsAsync([message]);
+    return ticket;
   } catch (error) {
-    console.error(error); // eslint-disable-line no-console
     return false;
   }
 }
@@ -42,13 +42,14 @@ async function notifyPassenger(reservationId) {
     ProjectionExpression: 'expo_push_token'
   }).promise();
   const expoPushToken = passengerData.Item.expo_push_token;
+  if (!expoPushToken) { return false; }
   const result = await sendNotification(expoPushToken);
   return result;
 }
 
 async function declineReservation(reservationId) {
   const updatedStatus = 'declined';
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
   try {
     const params = {
       TableName: ReservationsTableName,
@@ -66,6 +67,21 @@ async function declineReservation(reservationId) {
   } catch (e) {
     return false;
   }
+}
+
+async function saveReceipt(receiptId) {
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
+  const params = {
+    TableName: ReceiptsTableName,
+    Item: {
+      receipt_id: receiptId,
+      receipt_type: 'expo_push_notification',
+      checked: false,
+      created_at: timestamp,
+      updated_at: timestamp
+    }
+  };
+  return dynamoDB.put(params).promise();
 }
 
 exports.handler = async (event) => {
@@ -86,7 +102,11 @@ exports.handler = async (event) => {
     };
   }
 
-  await notifyPassenger(reservationId);
+  const tickets = await notifyPassenger(reservationId);
+  if (tickets && tickets.length && tickets[0].id) {
+    const ticketId = tickets[0].id;
+    await saveReceipt(ticketId);
+  }
 
   return {
     statusCode: 200,

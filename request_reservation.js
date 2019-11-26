@@ -3,6 +3,7 @@ const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 const { Expo } = require('expo-server-sdk');
 
+const ReceiptsTableName = process.env.dynamodb_receipts_table_name;
 const ReservationsIndexName = process.env.dynamodb_reservations_index_name;
 let ReservationsTableName = process.env.dynamodb_reservations_table_name;
 let TripsTableName = process.env.dynamodb_trips_table_name;
@@ -25,10 +26,9 @@ async function sendNotification(expoPushToken, tripId) {
     data: { action: 'request', resource: 'trip', resource_id: tripId }
   };
   try {
-    const ticketChunk = await expo.sendPushNotificationsAsync([message]);
-    return ticketChunk;
+    const ticket = await expo.sendPushNotificationsAsync([message]);
+    return ticket;
   } catch (error) {
-    console.error(error); // eslint-disable-line no-console
     return false;
   }
 }
@@ -46,8 +46,9 @@ async function notifyDriver(tripId) {
     ProjectionExpression: 'expo_push_token'
   }).promise();
   const expoPushToken = driverData.Item.expo_push_token;
-  const result = await sendNotification(expoPushToken, tripId);
-  return result;
+  if (!expoPushToken) { return false; }
+  const ticket = await sendNotification(expoPushToken, tripId);
+  return ticket;
 }
 
 async function checkDuplicated(tripId, userId) {
@@ -70,7 +71,7 @@ async function checkDuplicated(tripId, userId) {
 async function createTripReservation(tripId, userId, reservedSeats, route) {
   const reservationId = `res_${uuidv4()}`;
   const reservationStatus = 'pending';
-  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss-04:00');
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
   try {
     await dynamoDB
       .transactWrite({
@@ -113,6 +114,21 @@ async function createTripReservation(tripId, userId, reservedSeats, route) {
   } catch (e) {
     return false;
   }
+}
+
+async function saveReceipt(receiptId) {
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
+  const params = {
+    TableName: ReceiptsTableName,
+    Item: {
+      receipt_id: receiptId,
+      receipt_type: 'expo_push_notification',
+      checked: false,
+      created_at: timestamp,
+      updated_at: timestamp
+    }
+  };
+  return dynamoDB.put(params).promise();
 }
 
 exports.handler = async (event) => {
@@ -168,7 +184,11 @@ exports.handler = async (event) => {
     };
   }
 
-  await notifyDriver(tripId);
+  const tickets = await notifyDriver(tripId);
+  if (tickets && tickets.length && tickets[0].id) {
+    const ticketId = tickets[0].id;
+    await saveReceipt(ticketId);
+  }
 
   return {
     statusCode: 201,

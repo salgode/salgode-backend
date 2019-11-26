@@ -2,6 +2,7 @@ const aws = require('aws-sdk');
 const moment = require('moment');
 const { Expo } = require('expo-server-sdk');
 
+const ReceiptsTableName = process.env.dynamodb_receipts_table_name;
 let ReservationsTableName = process.env.dynamodb_reservations_table_name;
 let TripsTableName = process.env.dynamodb_trips_table_name;
 let UsersTableName = process.env.dynamodb_users_table_name;
@@ -19,14 +20,14 @@ async function sendNotification(expoPushToken, reservationId) {
   const message = {
     to: expoPushToken,
     sound: 'default',
-    body: 'Tu solicitud ha sido aceptada! :)',
-    data: { action: 'accept', resource: 'resevation', resource_id: reservationId }
+    body: `Tu solicitud ha sido aceptada! 😍
+Puedes llamar al conductor 📲`,
+    data: { action: 'accept', resource: 'reservation', resource_id: reservationId }
   };
   try {
-    const ticketChunk = await expo.sendPushNotificationsAsync([message]);
-    return ticketChunk;
+    const ticket = await expo.sendPushNotificationsAsync([message]);
+    return ticket;
   } catch (error) {
-    console.error(error); // eslint-disable-line no-console
     return false;
   }
 }
@@ -44,8 +45,9 @@ async function notifyPassenger(reservationId) {
     ProjectionExpression: 'expo_push_token'
   }).promise();
   const expoPushToken = passengerData.Item.expo_push_token;
-  const result = await sendNotification(expoPushToken, reservationId);
-  return result;
+  if (!expoPushToken) { return false; }
+  const ticket = await sendNotification(expoPushToken, reservationId);
+  return ticket;
 }
 
 async function getReservedSeats(reservationId) {
@@ -92,6 +94,21 @@ async function acceptReservation(reservedSeats, reservationId, tripId) {
   }
 }
 
+async function saveReceipt(receiptId) {
+  const timestamp = moment().format('YYYY-MM-DDTHH:mm:ss');
+  const params = {
+    TableName: ReceiptsTableName,
+    Item: {
+      receipt_id: receiptId,
+      receipt_type: 'expo_push_notification',
+      checked: false,
+      created_at: timestamp,
+      updated_at: timestamp
+    }
+  };
+  return dynamoDB.put(params).promise();
+}
+
 exports.handler = async (event) => {
   if (event.requestContext.stage === 'staging') { stagingOverwrite(); }
   const tripId = event.pathParameters.trip;
@@ -113,7 +130,11 @@ exports.handler = async (event) => {
     };
   }
 
-  await notifyPassenger(reservationId);
+  const tickets = await notifyPassenger(reservationId);
+  if (tickets && tickets.length && tickets[0].id) {
+    const ticketId = tickets[0].id;
+    await saveReceipt(ticketId);
+  }
 
   return {
     statusCode: 200,
