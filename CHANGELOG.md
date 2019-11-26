@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/salgode/salgode-backend/compare/v1.3.0...v1.4.0) (2019-11-26)
+
+
+### Bug Fixes
+
+* **get_user_current_trip:** validation when no trips as passenger ([351f45b](https://github.com/salgode/salgode-backend/commit/351f45b))
+* **get_user_self:** do not force push notifications permissions ([1dca060](https://github.com/salgode/salgode-backend/commit/1dca060))
+* **get_user_vehicles:** no vehicles case ([c4515a0](https://github.com/salgode/salgode-backend/commit/c4515a0))
+* **login_user:** get driver license image url ([874b260](https://github.com/salgode/salgode-backend/commit/874b260))
+* **reservation:** saving notification receipt & details ([d9b1c68](https://github.com/salgode/salgode-backend/commit/d9b1c68))
+* **reservations:** retrieve reservation id instead trip id ([34253aa](https://github.com/salgode/salgode-backend/commit/34253aa))
+* **style:** lint fix ([6a0e7c0](https://github.com/salgode/salgode-backend/commit/6a0e7c0))
+* **upload_image:** staging environment ([d2aaab2](https://github.com/salgode/salgode-backend/commit/d2aaab2))
+
+
+### Chore
+
+* **authorizer:** set staging environment ([23a32b0](https://github.com/salgode/salgode-backend/commit/23a32b0))
+* **driver_trips:** set staging environment ([882be45](https://github.com/salgode/salgode-backend/commit/882be45))
+* **reservation:** set staging environment ([9362773](https://github.com/salgode/salgode-backend/commit/9362773))
+* **trips info:** set staging environment ([6fe7036](https://github.com/salgode/salgode-backend/commit/6fe7036))
+* **user:** set staging environment ([f88c286](https://github.com/salgode/salgode-backend/commit/f88c286))
+
+
+### Features
+
+* **get_passenger_reservation:** add trip route info ([9ad095c](https://github.com/salgode/salgode-backend/commit/9ad095c))
+* **get_user_self:** validate expo token and device id ([5c24a46](https://github.com/salgode/salgode-backend/commit/5c24a46))
+* **login_user:** add robustness against push notf permissions lack ([6a32ee1](https://github.com/salgode/salgode-backend/commit/6a32ee1))
+* **login_user:** handle user and devices notifications attrs ([f4262b7](https://github.com/salgode/salgode-backend/commit/f4262b7))
+* **logout_user:** add logout v1 ([6cd748e](https://github.com/salgode/salgode-backend/commit/6cd748e))
+* **request_reservation:** add emoji ([eca4832](https://github.com/salgode/salgode-backend/commit/eca4832))
+* **reservations:** add push notifications ([1902329](https://github.com/salgode/salgode-backend/commit/1902329))
+
 ## [1.3.0](https://github.com/salgode/salgode-backend/compare/v1.2.0...v1.3.0) (2019-11-16)
 
 
